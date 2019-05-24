@@ -1,0 +1,38 @@
+books.txt
+
+
+The Hundred-Page Machine Learning Book
+“read first, buy later” principle. The read first, buy later principle implies that you can freely download the book, read it and share it with your friends and colleagues. If you liked the book, only then you have to buy it.
+
+
+
+Learning From Data
+Category: Machine Learning.
+Supplement: You can find the companion lectures and videos.
+
+
+Interpretable Machine Learning
+A Guide for Making Black Box Models Explainable
+https://christophm.github.io/interpretable-ml-book/
+
+
+
+## Others
+
+Reinforcement Learning: An Introduction (2nd Edition)
+Authors: Richard S. Sutton, Andrew G. Barto.
+
+https://github.com/ShangtongZhang/reinforcement-learning-an-introduction
+
+
+Deep Reinforcement Learning Hands-On
+Apply modern RL methods, with deep Q-networks, value iteration, policy gradients, TRPO, AlphaGo Zero and more
+
+https://github.com/PacktPublishing/Deep-Reinforcement-Learning-Hands-On
+https://medium.com/mlreview/speeding-up-dqn-on-pytorch-solving-pong-in-30-minutes-81a1bd2dff55
+
+
+
+The Book of Why
+Authors: Judea Pearl, Dana Mackenzie.
+Categories: Data Science, AI and Machine Learning.

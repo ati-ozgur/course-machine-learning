@@ -4,6 +4,8 @@ books.txt
 The Hundred-Page Machine Learning Book
 “read first, buy later” principle. The read first, buy later principle implies that you can freely download the book, read it and share it with your friends and colleagues. If you liked the book, only then you have to buy it.
 
+https://github.com/aburkov/theMLbook
+http://themlbook.com/wiki/doku.php?id=start&do=index
 
 
 Learning From Data

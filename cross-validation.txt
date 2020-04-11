@@ -1,0 +1,20 @@
+cross-validation.txt
+
+
+universite sınavı.
+
+Test = OYS, YKS yada o zamanki adı ne ise.
+Train  = bu sınav için kitaplardaki soruları çözme
+validation = dersane-deneme sınavları
+
+deneme sınavlarındaki sonuçlara göre kendimizi ayarlarız.
+Kimya formullerini daha iyi öğrenme.
+geometri çalışma
+...
+
+
+validation'ına göre makine öğrenmesinin hyper parametreleri ve bazı konuları nasıl çözdüğü daha iyi ayarlanır.
+
+
+
+

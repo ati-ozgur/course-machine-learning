@@ -1,1 +1,16 @@
 link-courses.txt
+
+
+DSO 530: Applied Modern Statistical Learning Techniques
+R Language
+https://www.alsharif.info/iom530
+
+
+
+https://github.com/DataScienceSpecialization/courses
+
+
+
+
+NPTEL » Randomized Algorithms
+https://onlinecourses.nptel.ac.in/noc20_cs39/announcements?force=true

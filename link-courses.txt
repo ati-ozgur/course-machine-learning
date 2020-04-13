@@ -19,3 +19,7 @@ https://onlinecourses.nptel.ac.in/noc20_cs39/announcements?force=true
 
 
 https://github.com/Machine-Learning-Tokyo/AI_Curriculum
+
+
+
+https://www.coursera.org/learn/machine-learning-accounting-python/home/welcome

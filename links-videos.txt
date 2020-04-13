@@ -3,3 +3,7 @@ links-videos.txt
 
 Machine Learning Model Evaluation Metrics
 https://youtu.be/wpQiEHYkBys
+
+
+Understanding Wavelets, Part 5: Machine Learning and Deep Learning with Wavelet Scattering
+https://youtu.be/XyeZFo1d5aY

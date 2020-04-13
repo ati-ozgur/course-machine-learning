@@ -14,3 +14,8 @@ https://github.com/DataScienceSpecialization/courses
 
 NPTEL » Randomized Algorithms
 https://onlinecourses.nptel.ac.in/noc20_cs39/announcements?force=true
+
+
+
+
+https://github.com/Machine-Learning-Tokyo/AI_Curriculum

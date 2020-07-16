@@ -1,5 +1,8 @@
 books.txt
 
+Understanding Machine Learning: From Theory to Algorithms
+https://www.cs.huji.ac.il/~shais/UnderstandingMachineLearning/index.html
+
 
 The Hundred-Page Machine Learning Book
 “read first, buy later” principle. The read first, buy later principle implies that you can freely download the book, read it and share it with your friends and colleagues. If you liked the book, only then you have to buy it.

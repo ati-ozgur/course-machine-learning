@@ -10,6 +10,9 @@ The Hundred-Page Machine Learning Book
 https://github.com/aburkov/theMLbook
 http://themlbook.com/wiki/doku.php?id=start&do=index
 
+Machine Learning from Scratch
+https://dafriedman97.github.io/mlbook/content/introduction.html
+
 
 Learning From Data
 Category: Machine Learning.

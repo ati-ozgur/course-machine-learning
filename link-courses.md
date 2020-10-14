@@ -10,6 +10,9 @@ https://argmax.ai/ml-course/
 
 [Learning From Data (Introductory Machine Learning)](https://www.edx.org/course/learning-from-data-introductory-machine-learning)
 
+[Amazon Machine Learning Course](https://github.com/aws-samples/aws-machine-learning-university-accelerated-nlp)
+
+
 
 DSO 530: Applied Modern Statistical Learning Techniques
 R Language

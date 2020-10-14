@@ -13,6 +13,10 @@ https://argmax.ai/ml-course/
 [Amazon Machine Learning Course](https://github.com/aws-samples/aws-machine-learning-university-accelerated-nlp)
 
 
+[Machine Learning Foundations Coursera](https://www.coursera.org/learn/ml-foundations)
+
+
+
 
 DSO 530: Applied Modern Statistical Learning Techniques
 R Language

@@ -3,6 +3,9 @@
 
 https://argmax.ai/ml-course/
 
+https://bloomberg.github.io/foml/#home
+
+
 
 [Data Science: Machine Learning](https://online-learning.harvard.edu/course/data-science-machine-learning?delta=1)
 

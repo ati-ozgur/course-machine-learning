@@ -2,3 +2,5 @@ gradient-descent.txt
 
 
 https://machinelearningmastery.com/gradient-descent-with-momentum-from-scratch/
+
+https://machinelearningmastery.com/difference-between-backpropagation-and-stochastic-gradient-descent/

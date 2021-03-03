@@ -1,0 +1,4 @@
+gradient-descent.txt
+
+
+https://machinelearningmastery.com/gradient-descent-with-momentum-from-scratch/

@@ -3,3 +3,6 @@ from-scratch-machine-learning-algorithms.txt
 
 
 https://towardsdatascience.com/how-to-code-gaussian-mixture-models-from-scratch-in-python-9e7975df5252
+
+
+https://www.kdnuggets.com/2021/05/xgboost-explained-diy-xgboost-library-200-lines-python.html

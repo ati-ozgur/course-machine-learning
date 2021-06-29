@@ -1,0 +1,11 @@
+link-reinforcement-learning.txt
+
+
+
+Sequential Decision Analytics and Modeling
+
+Professor Warren Powell
+https://castlelab.princeton.edu/RLSO/
+https://castlelab.princeton.edu/orf-411/
+https://www.overleaf.com/project/5c38f4c0dd838e54104f24b9
+

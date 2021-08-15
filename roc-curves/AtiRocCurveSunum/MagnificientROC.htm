@@ -1,0 +1,1941 @@
+<html><head><title>Receiver Operating Characteristic Curves</title>
+ 
+
+ <script language="JavaScript">
+ <!-- THE FOLLOWING JAVASCRIPT CALCULATES STANDARD ERROR OF A.U.C.
+
+ var SEkept;
+ SEkept = "?";
+
+// 1. Validate Data:
+
+function ValidAUC (AUC, chirp)
+  {  var okay = true;
+     if (   (AUC.value < 0.5)
+          ||(AUC.value > 1.0) )
+        { okay = false;
+        };
+     if ( (! okay) && chirp )
+        { alert ("Bad Area Under curve!");
+          AUC.select();
+          AUC.focus();
+        };
+     return okay;
+  }
+
+function ValidNumber(num, chirp)
+  {  var okay = true;
+     if ( num.value < 15 )
+        { okay = false;
+        };
+     if ( (! okay) && chirp  )
+        { alert ("Bad sample number - must be 15 or over !");  //???
+          num.select();
+          num.focus();
+        };
+     return okay;
+  }
+
+
+//////////////////// Main function : validate data, calculate SE ///////////////////
+
+function CalculateSE (thisform)
+  { var errors = 0;                             //error count
+    var duditem = "";                           //remember where it failed!
+    var message = "\n";                         //error message
+
+  if (! ValidAUC (thisform.AUC, false) )
+        { errors ++;
+          duditem = thisform.AUC;
+          message += "Bad Area Under Curve - must be >=0.5 and <= 1.0 \n"; 
+        };
+
+  if (! ValidNumber (thisform.noDisease, false) )
+        { errors ++;
+          duditem = thisform.noDisease;
+          message += "Bad number of individuals without disease\n"; 
+        };
+
+  if (! ValidNumber (thisform.Disease, false) )
+        { errors ++;
+          duditem = thisform.Disease;
+          message += "Bad number of individuals WITH disease\n"; 
+        };
+
+  if (errors == 0)
+     {  //if OK, calculate SE:
+
+/*
+        Q1 = A / (2 - A)
+        Q2 = 2A^2 / (1 + A)
+
+ SE = __    /  A (1-A) + (na-1)(Q1 - A^2)+(nn-1)(Q2 - A^2)
+        \  /   -----------------------------------------
+         \/                     na * nn
+*/
+
+
+        var SE, A, na, nn, Q1, Q2;
+
+        A = parseFloat(thisform.AUC.value); // or could say 1.0 * etc.
+        nn = parseFloat(thisform.noDisease.value);
+        na = parseFloat(thisform.Disease.value);
+
+        Q1 = A / (2 - A);
+        Q2 = (2 * A * A) / (1 + A);
+
+        SE = Math.sqrt(
+                (    (A * (1-A))
+                   + (na - 1)*(Q1 - (A*A))
+                   + (nn - 1)*(Q2 - (A*A))
+                 ) / (na * nn)
+                      );
+
+   SE = SE + " ";       //coerce to string ('cast')
+   thisform.SE.value = SE.substring(0,7); //trim off last few digits.
+   SEkept = thisform.SE.value; //retain value
+
+     } else
+
+     { message += "\nPlease FIX THIS AND RETRY\n(Click on OK, fix errors)!";
+       if (errors == 1)
+           { alert  ("There was an error in your data\n"
+                     + message);
+           } else
+           { alert ("There were errors!\n" + message);
+           };
+       duditem.select();
+       duditem.focus();
+     };
+
+  if (errors != 0) return (false);
+  return (true);                //clumsy.
+  }
+
+  //////////////////////// end of the main function /////////////////////
+
+ //-->
+ </script></head>
+<body>
+<!--body background="images/roc.jpg"-->
+
+<div align="center">
+<p></p><h1>The magnificent ROC<font size="4"><br>
+(Receiver Operating Characteristic curve)</font></h1>
+</div>
+<hr>
+
+<div align="center">
+<table width="95%"><tbody><tr><td>             <!-- OUTER MARGIN -->
+
+
+
+
+<div align="center">
+<table width="60%">
+<tbody><tr><td align="center"><i>
+"There is no statistical test, however intuitive and simple, which
+will not be abused by medical researchers"</i> <!-- me, 2001 -->
+</td></tr></tbody></table></div>
+
+
+<p></p><p><font face="Verdana,Helvetica" size="5"><b>Introduction - A statistical prelude</b></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">
+
+ROC curves were developed in the 1950's as a by-product of research
+into making sense of radio signals contaminated by noise. More recently
+it's become clear that they are remarkably useful in medical decision-making.
+That doesn't mean that they are always used appropriately! We'll highlight
+their use (and misuse) in our tutorial. 
+We'll first try to move rapidly through basic stats, and then address ROC
+curves. We'll take a practical, medical approach to ROC curves,
+and give a few examples. 
+
+
+</font></p><p></p><div align="center">
+<table bgcolor="#fff0f0" border="1" width="70%">
+<tbody><tr><td><font face="Verdana,Arial,Helvetica" size="2"><div align="justify">
+If you know all about the terms 'sensitivity', 'specificity', FPF,
+FNF, TPF and TNF, <i>as well as</i> understanding the terms
+'SIRS' and 'sepsis', you can <a href="#skip">click here to skip past the
+basics</a>, but we wouldn't advise it! Once we've introduced ROCs, we'll
+<a href="#play">play a bit</a>, and then look at two examples -
+<a href="#pct">procalcitonin and sepsis</a>, and also
+<a href="#ptb">tuberculosis and pleural fluid adenosine deaminase</a>.
+Finally, in a <a href="#footer">footnote</a>, we examine
+accuracy, and positive and negative predictive values - such
+discussion will become important when we find out about costing, and
+<a href="#threshold">how to set a test threshold</a>.
+</div></font>
+</td></tr></tbody></table></div>
+
+<p><font face="Garamond,Times New Roman" size="4">Consider patients in intensive care (ICU). One of the major causes
+of death in such patients is "sepsis". Wouldn't it be nice if we had
+a quick, easy test that defined early on whether our patients were "septic" or not?
+Ignoring for the moment what sepsis <i>is</i>, let's consider such a
+test. We imagine that we take a population of ICU patients, and do
+two things:
+</font></p><ol>
+<font face="Garamond,Times New Roman" size="4"> <li>Perform our magical TEST and record the results;
+ </li><li>Use some "gold standard" to decide who REALLY has "sepsis", and record this
+ result (in a blinded fashion).
+</li></font></ol><font face="Garamond,Times New Roman" size="4">.
+Here are the results:
+
+</font><p>
+</p><div align="center">
+<table bgcolor="white" border="3" width="60%">
+ <tbody><tr><td colspan="3" align="center"><b>Actuality v the TEST</b>
+  </td></tr>
+
+ <tr><td width="40%">&nbsp;
+     </td><td align="center" width="30%"><i>SEPSIS</i>
+     </td><td align="center" width="30%"><i>NO sepsis</i>
+     </td></tr>
+
+ <tr><td><i>"high" TEST*</i> (positive)
+   </td><td align="center" bgcolor="#ff3333"><b><font size="5">TPF</font></b>
+   </td><td align="center" bgcolor="#ccccff"><b><font size="5">FPF</font></b>
+   </td></tr>
+
+ <tr><td><i>"low" TEST*</i> (negative)
+   </td><td align="center" bgcolor="#ffcccc"><b><font size="5">FNF</font></b>
+   </td><td align="center" bgcolor="#3333ff"><b><font size="5">TNF</font></b>
+   </td></tr>
+
+<tr><td colspan="3" align="left">
+*<i><b><font size="2">"high" and "low" refer to TEST value relative to
+some arbitrary cutoff level!
+</font></b></i></td></tr>
+
+</tbody></table>
+</div>
+
+<p><font face="Garamond,Times New Roman" size="4"><b>Please note</b> (note this well) that we have represented our
+results as <i>fractions</i>, and that:
+
+<font face="Courier"><pre>       FNF + TPF = 1</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">In other words, given FNF, the False Negative Fraction, you can <i>work out</i>
+TPF, the True Positive Fraction, and vice versa. Similarly, the False Positive
+Fraction and True Negative Fraction must also add up
+to one - those patients who really have NO sepsis (in our example) must
+either be true negatives, or misclassified by the test as positives
+despite the absence of sepsis. 
+
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">In our table, <b><font color="red" size="5">TPF</font></b> represents the number of patients who have
+sepsis, and have this corroborated by having a "high" TEST (above whatever
+cutoff level was chosen). <b><font color="#9999ff" size="5">FPF</font></b> represents <i>false positives</i> -
+the test has lied to us, and told us that non-septic patients are
+really septic. Similarly, true negatives are represented by <b><font color="blue" size="5">TNF</font></b>,
+and false negatives by <b><font color="#ff9999" size="5">FNF</font></b>.
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">In elementary statistical texts, you'll encounter other terms.
+Here they are:
+
+</font></p><p></p><ul><li><font face="Garamond,Times New Roman" size="4">The <b>sensitivity</b> is how good the test is at picking
+out patients with sepsis. It is simply the True Positive Fraction.
+In other words, sensitivity gives us the proportion of cases picked
+out by the test, relative to all cases who actually have the
+disease.
+
+</font><p></p></li><li><font face="Garamond,Times New Roman" size="4"><b>Specificity</b> is the ability of the test
+   to pick out patients who do NOT have the disease. It won't
+   surprise you to see that this is synonymous with the True
+   Negative Fraction.
+</font></li></ul>
+
+
+
+
+
+
+<p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="4"><b>Probability and StatSpeak</b></font></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">Not content with the above terms and abbreviations, statisticians
+have further confused things using the following sort of terminology:
+
+<font face="Courier"><pre>      P( T+ | D- )</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Frightening, isn't it? Well, not when one realises that the above
+simply reads "the probability of the test being positive, given that
+the disease is not present". T+ is simply an abbreviation for "a positive
+test", and "D-" is similarly a shorthand for "the disease isn't present".
+P(something) is a well-accepted abbreviation for "the probability of the
+event <i>something</i>", and the vertical bar means "given that". Not
+too difficult!
+
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">So here are the translations:
+
+</font></p><p>
+</p><div align="center">
+<table bgcolor="white" border="2" width="60%">
+<tbody><tr>
+ <td align="center"><i>Statement</i>
+ </td><td align="center"><i>Translation</i>
+ </td></tr>
+
+<tr><td align="center"> P(T+ | D+)
+  </td><td>sensitivity, =true positive fraction, =TPF
+  </td></tr>
+
+<tr><td align="center">P(T- | D-)
+  </td><td>specificity, TNF
+  </td></tr>
+
+<tr><td align="center">P(T+ | D-)
+  </td><td>FPF
+  </td></tr>
+
+<tr><td align="center">P(T- | D+)
+  </td><td>FNF
+  </td></tr>
+</tbody></table></div>
+
+<p><font face="Garamond,Times New Roman" size="4">Using similar notation, one can also talk about the prevelance of
+a disease in a population as "P(D+)". 
+Remember (we stress this again!) that the false negative fraction is the same as one <i>minus</i>
+the true positive fraction, and similarly, FPF = 1 - TNF. 
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="4"><b>KISS</b></font></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">We'll keep it simple. From now on, we will usually talk about TPF, TNF, FPF and FNF.
+If you like terms like sensitivity, specificity, bully for you. Substitute
+them where required!
+
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="4"><b>Truth</b></font></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">Consider our table again:
+
+</font></p><p>
+</p><div align="center">
+<table bgcolor="white" border="3" width="60%">
+ <tbody><tr><td colspan="3" align="center"><b>Actuality v the TEST</b>
+  </td></tr>
+
+ <tr><td width="40%">&nbsp;
+     </td><td align="center" width="30%"><i>SEPSIS</i>
+     </td><td align="center" width="30%"><i>NO sepsis</i>
+     </td></tr>
+
+ <tr><td><i>"high" TEST*</i> (positive)
+   </td><td align="center" bgcolor="#ff3333"><b><font size="5">TPF</font></b>
+   </td><td align="center" bgcolor="#ccccff"><b><font size="5">FPF</font></b>
+   </td></tr>
+
+ <tr><td><i>"low" TEST*</i> (negative)
+   </td><td align="center" bgcolor="#ffcccc"><b><font size="5">FNF</font></b>
+   </td><td align="center" bgcolor="#3333ff"><b><font size="5">TNF</font></b>
+   </td></tr>
+
+
+</tbody></table>
+</div>
+
+
+
+<p><font face="Garamond,Times New Roman" size="4"> See how we've assumed that we have absolute
+knowledge of who has the disease (here, sepsis), and who doesn't. A good
+intensivist will probably give you a hefty swipe around the ears if you
+go to her and say that you have an infallible test for "sepsis". Until
+fairly recently, there weren't even any good definitions of sepsis!
+Fortunately, Roger Bone (and his committee) came up with a fairly reasonable definition. The
+ACCP/CCM consensus criteria [Crit Care Med 1992 20 864-74] first define
+something called the Systemic Inflammatory Response Syndrome, characterised
+by at least two of:
+</font></p><ol><li><font face="Garamond,Times New Roman" size="4">Temperature under 36<sup>o</sup>C or over 38<sup>o</sup>C;
+    </font></li><li><font face="Garamond,Times New Roman" size="4">Heart rate over 90/min;
+    </font></li><li><font face="Garamond,Times New Roman" size="4">Respiratory rate over 20/min <i>or</i> PaCO2 under 32 mmHg;
+    </font></li><li><font face="Garamond,Times New Roman" size="4">White cell count under 4000/mm<sup>3</sup> <i>or</i> over 12000/mm<sup>3</sup> <i>or</i> over 10% immature forms;
+</font></li></ol>
+
+<p><font face="Garamond,Times New Roman" size="4">The above process is often abbreviated to "SIRS". The consensus criteria
+ then go on to define <b>sepsis</b>:
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"><i>When the systemic inflammatory response syndrome is the result of
+a confirmed infectious process, it is termed 'sepsis'.</i>
+
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Later, they define 'severe sepsis' (which is sepsis associated with organ
+dysfunction, hypoperfusion, or hypotension. "Hypoperfusion and perfusion
+abnormalities may include, but are not limited to lactic acidosis, oliguria,
+or an acute alteration in mental status"). Finally, 'septic shock' is
+defined as sepsis with hypotension, despite adequate fluid resuscitation,
+along with the presence of perfusion abnormalities. Hypotension is a
+systolic blood pressure under 90 mmHg <i>or</i> a reduction of 40(+) mmHg
+from baseline. 
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">The above definitions have been widely accepted.
+Now, there are many reasons why such definitions can be criticised.
+We will not explore such criticism in detail but merely note that:
+</font></p><ol>
+<font face="Garamond,Times New Roman" size="4"> <li>The definition of SIRS appears to be over-inclusive (Almost all patients
+ in ICU will conform to the definition at some time during their stay);
+ </li><li>Various modifications of the third criterion (respiratory rate) have
+ been used to accommodate patients on mechanical ventilation;
+ </li><li>The use of high <i>or</i> low values for temperature and white cell
+ count appears to exclude patients who might be 'in transition' from
+ low to high, or high to low values!
+ </li><li> Proof that SIRS "is the result of an infectious process" may be
+ difficult or impossible to achieve. '<i>Proof</i>' of anything in ICU
+ (as opposed to 'showing an association') is particularly difficult because of the multiple problems
+ experienced by patients. (Quite apart from the philosophical problems
+ posed by 'proof')!
+ </li><li> It may be difficult to establish whether infecting organisms are
+ present. Even if
+ adequate quantities of culture material have been collected <i>at the
+ right time</i>, and before antibiotics have been started, <i>and</i>
+ your microbiology laboratory maintains superb standards of quality
+ control, infecting organisms may still be missed. Some have even claimed
+ that organisms (or their toxic products) enter the portal vein and cause
+ sepsis, but don't get into the systemic circulation!
+ </li><li>Evidence of the presence of bacteria in an organ or tissue (say lung, or blood)
+ is not evidence that the bacteria are causing the patient's systemic
+ illness. 
+ Ventilated patients are often <i>colonised</i> by bacteria,
+ without being infected; intravascular lines may likewise be colonised without the
+ bacteria necessarily causing SIRS.
+</li></font></ol>
+
+<p><font face="Garamond,Times New Roman" size="4">Despite the above limitations, one needs some starting point in defining
+sepsis, and we will use the ACCP/SCCM criteria. Our problem then becomes
+one of differentiating between patients with SIRS <i>without</i> evidence
+of bacterial infection, and patients who "truly" have sepsis. (We will
+<b>not</b> here examine whether certain patients have severe systemic
+infection <i>without</i> features of SIRS). 
+
+</font></p><hr>
+
+<font face="Garamond,Times New Roman" size="4"><a name="skip">
+</a></font><p><font face="Garamond,Times New Roman" size="4"><a name="skip"><font face="Verdana,Helvetica" size="5"><b>The magnificent ROC!</b></font></a></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">Remember that, way back above, we said that our TEST is "positive" if
+the value was above some arbitrary cutoff, and "negative" if below?
+Central to the idea of ROC curves (receiver operating characteristic, otherwise
+called 'relative operating characteristic' curves) is
+this idea of a cutoff level. Let's imagine that we have two populations
+- septic and non-septic patients with SIRS, for example. We have a TEST that
+we apply to each patient in each population in turn, and we get
+numeric results for each patient. We then plot histograms of these
+results, for each population, thus:
+
+
+</font></p><p>
+<applet code="roc.class" height="350" width="600">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="background" value="#F0F0F0">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="separation" value="50">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="demarcation" value="33">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="mode" value="noSeparation,noROC,shading">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="title" value="Two overlapping normal curves!">
+<font face="Garamond,Times New Roman" size="4">If you can read this message, then your browser is almost certainly
+not Java enabled. To view the acid-base calculator, get a Java-enabled
+browser!
+</font></applet>
+
+
+</p><p><font face="Garamond,Times New Roman" size="4">Play around with the above simple applet - move the (green) demarcating
+line from low to high (left to right), and see how, <i>as you move the
+test threshold from left to right</i>, the proportion of <font color="#9999ff">false positives</font>
+decreases. Unfortunately, there is a problem - as we decrease the
+false positives, so the <font color="red">true positives</font> also
+decrease! As an aside, note how we have drawn the curve such that
+where the curves overlap, we've shaded the overlap region.
+This is ugly, so in future, we'll leave the overlap to your imagination,
+thus:
+
+</font></p><p>
+<applet code="roc.class" height="350" width="600">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="background" value="#F0F0F0">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="separation" value="50">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="demarcation" value="33">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="mode" value="noSeparation,noROC">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="title" value="Two overlapping normal curves!">
+</applet>
+
+<!--
+We think the colours we have used are quite mnemonic, - patients that are really positive
+(red) have been confused by our test and are now a sort of washed-out red,
+and likewise for the (pale blue) negatives that are wrongly considered
+positive!
+-->
+
+</p><p><font face="Garamond,Times New Roman" size="4"><font size="4"><b>Now</b></font> we introduce the magnificent ROC! All an ROC curve is, is
+an exploration of what happens to TPF and FPF as we vary the position
+of our arbitrary TEST threshold.
+(AUC refers to the Area under the curve and will be discussed later).
+
+
+
+</font></p><p>
+<applet code="roc.class" height="350" width="600">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="background" value="#F0F0F0">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="separation" value="50">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="demarcation" value="75">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="mode" value="noSeparation">
+</applet>
+
+</p><p>
+<font face="Garamond,Times New Roman" size="4">Watch how, as you move the test threshold from right to left using the
+'slider' bar at the bottom, so
+the corresponding point on the ROC curve moves across from <i>left to
+right</i>! Why is this? Simple. If our threshold is very high, then
+there will be almost no <i>false</i> positives .. but we won't really identify
+many <i>true</i> positives either. Both TPF and FPF will be close to zero,
+so we're at a point low down and to the left of the ROC curve.
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">As we move our test threshold towards a more reasonable, lower value,
+so the number of true positives will increase (rather dramatically at
+first, so the ROC curve moves steeply up). Finally, we reach a region
+where there is a remarkable increase in <i>false positives</i> - so
+the ROC curve slopes off as we move our test threshold down to
+ridiculously low values.
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">And that's really that! (We will of course explore a little further).
+
+</font></p><hr>
+
+
+<font face="Garamond,Times New Roman" size="4"><a name="play">
+</a></font><p><font face="Garamond,Times New Roman" size="4"><a name="play"><font face="Verdana,Helvetica" size="5"><b>Playing with ROCs</b></font></a></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">In this section we will fool around with ROCs. We will:
+</font></p><ol>
+<font face="Garamond,Times New Roman" size="4"> <li><a href="#make">Create</a> ROC curves;
+ </li><li>Find out why the area under the ROC curve is <a href="#nonp">non-parametric</a>,
+ and why this is important;
+ </li><li>Learn to calculate required <a href="#ssize">sample sizes</a>;
+ </li><li>Compare the areas under <a href="#curve2">two ROC curves</a>;
+ </li><li>Examine the effects of <a href="#noise">noise</a>,
+    a <a href="#foolsgold">bad 'gold standard'</a>, and
+    <a href="#morerr">other sources of error</a>.
+</li></font></ol>
+
+<p>
+<font face="Garamond,Times New Roman" size="4">Let's play some more. In the following example, see how closely the
+two curves are superimposed, and how flat the corresponding ROC curve
+is! This demonstrates an important property of ROC curves - the
+ greater the overlap of the two curves,
+ the smaller the area under the ROC curve.
+
+
+</font></p><p>
+<applet code="roc.class" height="350" width="600">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="background" value="#F0F0F0">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="separation" value="5">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="demarcation" value="75">
+<font face="Garamond,Times New Roman" size="4">  </font><param name="mode" value="normal">
+</applet>
+
+</p><p><font face="Garamond,Times New Roman" size="4">Vary the curve separation using the upper "slider" control, and
+see how the ROC curve changes. When the curves overlap almost totally
+the ROC curve turns into a diagonal line from the bottom left corner
+to the upper right corner. What does this mean?
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Once you've understood what's happening here, then the true power
+of ROCs will be revealed. Let's think about this carefully..
+
+<a name="make">
+</a></font></p><p><font face="Garamond,Times New Roman" size="4"><a name="make"><font face="Verdana,Helvetica" size="4"><b>Let's make an ROC curve</b></font></a></font></p><p>
+
+</p><p><font face="Garamond,Times New Roman" size="4">Consider two populations, one of "normal" individuals and another
+of those with a disease. We have a test for the disease, and apply
+it to a mixed group of people, some with the disease, and others without.
+The test values range from (say) zero to a very large number - we
+rank the results in order. (We have rather arbitrarily decided that
+patients with bigger test values are more likely to be 'diseased' but
+remember that this is not necessarily the case. Of the thousand possibilities,
+consider patients with low serum calcium concentrations and hypoparathyroidism -
+here the low values are the abnormal ones). 
+
+
+Now, here's how we construct our curve..
+
+</font></p><p></p><ol>
+<font face="Garamond,Times New Roman" size="4">  <li>Start at the bottom left hand corner of the ROC curve - here
+  we know that both FPF and TPF must be zero (This corresponds to
+  having the green 'test threshold' line in our applet way over on the
+  right);
+  </li><li>Now examine the largest result. In order to start constructing
+  our ROC curve, we set our test threshold at <i>just</i> below this
+  large result - we move the green marker slightly left.
+   Now, if this, the first result, belongs to a patient <i>with</i>
+  the disease, then the case is a <i>true positive</i>, the TPF must
+  now be bigger, and we plot our first ROC curve point by moving UP on
+  the screen and plotting a point. Conversely, if the disease is absent,
+  we have a <i>false positive</i>, the FPF is now
+  greater than zero, and we move RIGHT on the screen and plot our point.
+  </li><li>Set the test threshold lower, to just below the second largest
+  result, and repeat the process described in (2).
+  </li><li>.. and so on until we've moved the threshold down to below the
+  lowest test value. We will now be in the upper right hand corner
+  of the ROC curve - because our green threshold marker is below
+  the lowest value, all results will be classified as positive, so
+  the TPF and FPF will both be 1.0 !
+</li></font></ol>
+
+<p><font face="Garamond,Times New Roman" size="4">Consider two tests. The first test is <i>good</i> at discriminating
+between patients with and without the disease. We'll call it test A.
+The second test is lousy - let's call it test Z. Let's examine each:
+
+</font></p><ul>
+<font face="Garamond,Times New Roman" size="4"> <li><b>Test Z</b>. Because this is a lousy test, as we move our
+ green marker left, picking off either false or true positives, our
+ likelihood of encountering either is much the same. For every true
+ positive (that moves us UP) we are likely to encounter a <i>false</i>
+ positive that moves us to the RIGHT, as we plot the graph. You
+ can see what will happen - we'll get a more-or-less diagonal line from the bottom
+ left corner of the ROC curve, up to the top right corner.
+
+ <p></p></li><li><b>Test A</b>. This is a good test, so we're initially more likely
+ to encounter <i>true</i> positives as we move our green marker left.
+ This means that initially our curve will move steeply UP. Only later,
+ as we start to encounter fewer and fewer true positives, and more and
+ more false positives, will the curve ease off and become more horizontal!
+
+</li></font></ul>
+
+<p><font face="Garamond,Times New Roman" size="4">From the above, you can get a good intuitive feel that the closer
+the ROC curve is to a diagonal, the less useful the test is at discriminating
+between the two populations. The more steeply the curve moves up and then
+(only later) across, the better the test. A more precise way of characterising
+this "closeness to the diagonal" is simply to look at the <b>AREA</b> under
+the ROC curve. The closer the area is to 0.5, the more lousy the test,
+and the closer it is to 1.0, the better the test!
+
+
+<a name="nonp">
+</a></font></p><p><font face="Garamond,Times New Roman" size="4"><a name="nonp"><font face="Verdana,Helvetica" size="4"><b>The Area under the ROC curve is non-parametric!</b></font></a></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">The real beauty of using the area under this curve is its simplicity.
+Consider the above process we used to construct the curve - we simply
+<i>ranked</i> the values, decided whether each represented a true or
+false positive, and then constructed our curve. It didn't matter whether
+result number 23 was a zillion times greater than result number 24, or
+0.00001% greater. We certainly didn't worry about the 'shapes of the curves',
+or any sort of curve parameter. From this you can deduce that the
+area under the ROC curve is not significantly affected by the shapes of
+the underlying populations. This is most useful, for we don't have to
+worry about "non-normality" or other curve shape worries, and can 
+derive a single parameter of great meaning - the area under the ROC
+curve!
+
+</font></p><p></p><div align="center">
+<table bgcolor="#fff0f0" border="1" width="70%">
+<tbody><tr><td><font face="Verdana,Arial,Helvetica" size="2"><div align="justify">
+We're about to get rather technical, so you might wish to
+skip the following, and <a href="#noise">move on to the nitty gritty</a>!
+</div></font>
+</td></tr></tbody></table></div>
+
+
+<p><font face="Garamond,Times New Roman" size="4">In an authoritative paper, Hanley and McNeil [Radiology 1982 143 29-36]
+explore the concept of the area under the ROC curve. They show that
+there is a clear similarity between this quantity and well-known
+(at least, to statisticians) Wilcoxon (or Mann-Whitney) statistics.
+Considering the specific case of randomly paired normal and abnormal
+radiological images, the authors show that the area under the
+ROC curve is a <i>measure of the probability</i> that the perceived abnormality
+of the two images will allow correct identification. (This can be generalised
+to other uses of the AUC). Note that ROC curves can be used even when
+test results don't necessarily give an accurate number! As long as one
+can <i>rank</i> results, one can create an ROC curve. For example, we
+might rate x-ray images according to degree of abnormality (say 1=normal,
+2=probably normal, and so on to 5=definitely abnormal), check how this
+ranking correlates with our 'gold standard', and then proceed to
+create an ROC curve.
+
+<a name="stderr">
+</a></font></p><p><font face="Garamond,Times New Roman" size="4"><a name="stderr">Hanley and McNeil explore further, providing methods of working
+out <i>standard errors</i> for ROC curves. Note that their estimates for
+standard error (SE) depend to a degree on the shapes of the distributions,
+but are conservative so even if the distributions are not normal,
+estimates of SE will tend to be a bit too large, rather than too small.
+(If you're unfamiliar with the concept of standard error, consult
+a basic text on statistics).</a>
+<!-- Later, to add an href -->
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">In short, they calculate standard error as
+<font face="Courier"><pre>
+             ____________________________________________
+            / 
+SE = __    /  A (1-A) + (n<sub>a</sub>-1)(Q1 - A<sup>2</sup>)+(n<sub>n</sub>-1)(Q2 - A<sup>2</sup>)
+       \  /   -----------------------------------------
+        \/                     n<sub>a</sub>n<sub>n</sub>
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Where A is the area under the curve, n<sub>a</sub> and n<sub>n</sub> are
+the number of abnormals and normals respectively, and Q1 and Q2 are
+estimated by:
+
+<font face="Courier"><pre>          Q1 = A / (2 - A)
+          Q2 = 2A<sup>2</sup> / (1 + A)
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Note that it is extremely silly to rely on Gaussian-based formulae
+to calculate standard error when the number of abnormal and normal cases
+in a sample are not the same. One should use the above formulae.
+
+
+<a name="ssize">
+</a></font></p><p><font face="Garamond,Times New Roman" size="4"><a name="ssize"><font face="Verdana,Helvetica" size="4"><b>Sample Size</b></font></a></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">Now that we can calculate the standard error for a particular sample size,
+(given a certain AUC), we can plan sample size for a study! Simply vary
+sample size until you achieve an appropriately small standard error. Note
+that, to do this, you <i>do</i> need an idea of the area under the ROC curve
+that is anticipated. Hanley and McNeil even provide a convenient diagram
+(Figure 3 in their article) that plots number against standard error for
+various areas under the curve. As usual, standard errors vary with the
+square root of the number of samples, and (as you might expect) numbers
+required will be smaller with greater AUCs. 
+
+
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="4"><b>Planning sample size when comparing two tests</b></font></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">ROC curves should be particularly valuable if we can use them to
+compare the performance of two tests. Such comparison is also discussed by Hanley
+and McNeil in the above mentioned paper, and a subsequent one
+[Hanley JA &amp; McNeil BJ, Radiology 1983 148 839-43] entitled
+<i>A method of comparing the areas under Receiver Operating Characteristic
+curves derived from the same cases</i>.
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Commonly in statistics, we set up a null hypothesis (that there
+is <i>no</i> statistically significant difference between two populations).
+If we reject such a hypothesis when it should be accepted, then we've
+made a <i>Type I</i> error. It is a tradition that we allow a one in
+twenty chance that we have made a type I error, in other words, we
+set our criterion for a "significant difference" between two
+populations at the 5% level. We call this cutoff of 0.05 "alpha".
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Less commonly discussed is "beta", (ß) the probability associated with
+committing a <i>Type II</i> error. We commit a type II error if we
+accept our null hypothesis when, in fact, the two populations <i>do</i>
+differ, and the hypothesis should have been rejected. Clearly, the smaller
+our sample size, the more likely is a type II error. It is common
+to be more tolerant with beta  - to accept say a one in ten chance that
+we have missed a significant difference between the two populations.
+Often, statisticians refer to the <i>power</i> of a test. The power
+is simply (1 - ß), so if ß is 10%, then the power is 90%.
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">In their 1982 paper, Hanley &amp; McNeil provide a convenient table
+(Table III) that gives the numbers of normal and abnormal subjects
+required to provide a probability of 80%, 90% or 95% of detecting
+differences between various ROC areas under the curve (with a one sided alpha of 0.05).
+For example, if we have one AUC of 0.775 and a second of 0.900, and we want a power
+of 90%, then we need 104 cases <i>in each group</i> (normals and abnormals).
+Note that generally, the greater the areas under both curves, the smaller
+the <b>difference</b> between the areas needs to be, to achieve significance.
+The tables are however <i><b>not</b></i> applicable where two tests
+are applied to the <i>same set of cases</i>.
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">The approach to two different tests being applied to the same cases
+is the subject of Hanley &amp; McNeil's second (1983) paper. This approach
+is discussed next.
+
+<a name="curve2">
+</a></font></p><p><font face="Garamond,Times New Roman" size="4"><a name="curve2"><font face="Verdana,Helvetica" size="4"><b>Actually comparing two curves</b></font></a></font></p><p>
+
+<!--
+{here discuss bivariate statistical testing, and maximum likelihood
+technique of Dorfman and Alf,
+ie [J Math Psych 1980 22 218-43] and [J Math Psych 1969 6 487-96].
+}
+-->
+
+<font face="Garamond,Times New Roman" size="4">This can be non-trivial. Just because the areas are similar doesn't necessarily
+mean that the curves are not different (they might cross one another)!
+If we have two curves of similar area and still wish to decide whether
+the two curves differ, we unfortunately have to use complex statistical tests
+ - bivariate statistical analysis.
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">In the much more common case where we have different areas <i>derived
+from two tests applied to different sets of cases</i>, then
+it is appropriate to calculate the standard error of the difference
+between the two areas, thus:
+
+<font face="Courier"><pre>                     ____________________
+                 _  /
+  SE(A1 - A2) =   \/  SE<sup><font face="Arial" size="1">2</font></sup>(A1) + SE<sup><font face="Arial" size="1">2</font></sup>(A2)
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Such an approach is <i>NOT</i> appropriate where two tests are
+applied to the same set of patients. In their 1983 paper, Hanley and
+McNeil show that in these circumstances, the correct formula is:
+
+<font face="Courier"><pre>                     ___________________________________
+                _  /
+  SE(A1 - A2) =  \/  SE<sup><font face="Arial" size="1">2</font></sup>(A1) + SE<sup><font face="Arial" size="1">2</font></sup>(A2) - 2<i>r</i>.SE(A1)SE(A2)
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">where <i>r</i> is a quantity that represents the correlation induced
+between the two areas by the study of the same set of cases. (The difference
+may be non-trivial - if <i>r</i> is big, then we will need far fewer cases
+to demonstrate a difference between tests on the same subjects)!
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"><b>Once we have the standard error</b> of the difference in areas, we can
+then calculate the statistic:
+
+<font face="Courier"><pre>  z = (A1 - A2) / SE(A1-A2)
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">If z is above a critical level, then we accept that the two areas
+are different. It is common to set this critical level at 1.96, as
+we then have our conventional one in twenty chance of making a type I
+error in rejecting the hypothesis that the two curves are similar.
+(Simplistically, the value of 1.96 indicates that the areas of the two curves are
+two standard deviations apart, so there is only an ~5% chance that
+this occurred randomly and that the curves are in fact the same).
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">In the circumstance where the same cases were studied, we still haven't told
+you how to calculate the magic number <i>r</i>. This isn't that simple.
+Assuming we have two tests T1 and T2, that classify our cases into
+either normals (n) or abnormals (a), and we have already calculated
+the ROC AUCs for each test (Let's call these areas A1 and A2).
+The procedure is as follows:
+
+</font></p><ol>
+<font face="Garamond,Times New Roman" size="4"> <li>Look at (n), the non-diseased patients. Find how the two tests
+ correlate for these patients, and obtain a value r<sub>n</sub> for
+ this correlation. (We'll soon reveal how to obtain this value);
+ </li><li>Look at (a), the abnormals, and similarly derive r<sub>a</sub>,
+ the correlation between the two tests for these patients;
+ </li><li>Average out r<sub>n</sub> and r<sub>a</sub>;
+ </li><li>Average out the areas A1 and A2, in other words, calculate (A1+A2)/2;
+ </li><li>Use Hanley and McNeil's Table I to look up a value of <i>r</i>,
+ given the average areas, and average of r<sub>n</sub> and r<sub>a</sub>.
+</li></font></ol>
+
+<font face="Garamond,Times New Roman" size="4">You now have <i>r</i> and can plug it into the standard error equation.
+But wait a bit, how do we calculate r<sub>n</sub> and r<sub>a</sub>?
+This depends on your method of scoring your data - if you are measuring
+things on an <i>interval</i> scale (for example, blood pressure in millimetres
+of mercury), then something called the Pearson product-moment correlation
+method is appropriate. For <i>ordinal</i> information (e.g. saying that
+'this image is definitely abnormal and that one is probably abnormal'),
+we use something called the <i>Kendall tau</i>. Either can be derived
+from most statistical packages. 
+
+<!-- it might be worth looking at:
+Swets JA. Pickett RM. Evaluation of diagnostic systems. New York.
+Academic Press. 1982. 
+-->
+
+
+
+<a name="noise">
+</a></font><p><font face="Garamond,Times New Roman" size="4"><a name="noise"><font face="Verdana,Helvetica" size="5"><b>Sources of Error</b></font></a></font></p><p>
+
+</p><p><font face="Garamond,Times New Roman" size="4"><a name="noise"><font face="Verdana,Helvetica" size="4"><b>The effect of noise</b></font></a></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">Let's consider how "random noise" might affect our curve. Still assuming
+that we have a 'gold standard' which confirms the presence or absence
+of disease, what happens as 'noise' confuses our test, in other words,
+when the test results we are getting are affected by <i>random variations</i>
+over which we have no control. 
+If we start off by assuming our test correlates perfectly with the gold
+standard, then the area under the ROC curve (AUC) will be 1.0. As we
+introduce noise, so some test results will be mis-classified - false
+positives and false negatives will creep in. The AUC will diminish.
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">What if the test is already pretty crummy at differentiating 'normals'
+from 'abnormals'? Here things become more complex, because some
+false positives or false negatives might accidentally be classified
+as true values. You can see however, that on average (provided sample
+numbers are sufficient and the test has some discriminatory power),
+noise will in general degrade test performance. It's unlikely that
+random noise will lead you to believe that the test is performing
+<i>better</i> than it really is - a most desirable characteristic!
+
+<a name="foolsgold">
+</a></font></p><p><font face="Garamond,Times New Roman" size="4"><a name="foolsgold"><font face="Verdana,Helvetica" size="4"><b>Independence from the gold standard</b></font></a></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">The one big catch with ROC curves is where the test and gold standard
+are not independent. This interdependence <i>will</i> give you spuriously high area
+under the ROC curve. Consider the extreme case where the gold standard
+is compared to itself (!) - the AUC will be 1.0, regardless. This
+becomes extremely worrying where the "gold standard" is itself a bit
+suspect - if the test being compared to the standard now also varies
+as does the standard, but both have a poor relationship to the disease
+you want to detect, then you might believe you're doing well and making
+appropriate diagnoses, but be far from the truth! Conversely, if the
+gold standard is a bit shoddy, but independent from the test, then
+the effect will be that of 'noise' - the test characteristics will
+be underestimated (often called "nondifferential misclassification" by
+those who wish to confuse you)!
+
+
+<a name="morerr">
+</a></font></p><p><font face="Garamond,Times New Roman" size="4"><a name="morerr"><font face="Verdana,Helvetica" size="4"><b>Other sources of error</b></font></a></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">It should also be clear that any bias inherent in a test is not
+transferred to bias the ROC curve. If one is biased in favour of
+making a diagnosis of abnormality, this merely reflects a position on
+the ROC curve, and has no impact on the overall shape of the curve.
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Other errors may still creep in. A fine article that examines
+sources of error (and why, after initial enthusiasm, so many tests
+fall into disfavour) is that of Ransohoff and Feinstein
+[New Engl J Med 1978 299(17) 926-30]. 
+ With <i>every</i> examination of a test one needs to look at:
+</font></p><ol>
+<font face="Garamond,Times New Roman" size="4"> </font><p></p><li><font face="Garamond,Times New Roman" size="4">Whether the full spectrum of a disease process is being examined.
+ If only severe cases are reported on, then the test may be useless
+ in milder cases (both pathologic and clinical components of the
+ disease should represent its full spectrum). A good example is with
+ malignant tumours - large, advanced tumours will be easily picked up, and
+ a screening test might also perform well in this setting, but miss early disease!
+ </font><p></p></li><li><font face="Garamond,Times New Roman" size="4">Comparative ('control') patients. These should be similar - for example, "the search
+ for a comparative pathological spectrum should include a different
+ process in the same anatomical location .. and the same process in
+ a different anatomical location" (citing the case of a test for say,
+ cancer of the colon);
+ </font><p></p></li><li><font face="Garamond,Times New Roman" size="4">Co-morbid disease. This may affect the positivity or negative status
+ of a test.
+ </font><p></p></li><li><font face="Garamond,Times New Roman" size="4">Verification bias. If the clinician is not blinded to the result of
+ the test, a positive may make him scrutinise the patient very carefully
+ and find the disease (which he missed in the other patient who had
+ a negative test). Another name for verification bias is <i>work-up bias</i>.
+ Verification bias is common and counter-intuitive. People tend to get
+ rather angry when you say it might exist, for they will reply along the lines
+ of "We confirmed all cases at autopsy, dammit!" (The positive test may
+ have influenced the clinicians to send the patients to autopsy). A good
+ test will be <i>more</i> likely to influence selection for 'verification',
+ and thus introduce a stronger bias! (<a href="#begg">Begg &amp; McNeil</a> describe this
+ bias well, and show how it can be corrected for).
+ </font><p></p></li><li><font face="Garamond,Times New Roman" size="4">Diagnostic review bias. If the test is first performed, and then
+ the definitive diagnosis is made, knowledge of the test result may affect
+ the final 'definitive' diagnosis.
+ Similar is "test-review bias", where knowledge of the 'gold standard'
+ diagnosis might influence interpretation of the test. Studies in radiology
+ have shown that provision of <i>clinical information</i> may move observers
+ along an ROC curve, or even to a new curve entirely! ('Co-variate analysis'
+ may help in controlling for this form of bias).
+ <!-- [cf in press ref 17 of Begg &amp; McNeil ] -->
+ </font><p></p></li><li><font face="Garamond,Times New Roman" size="4">"Incorporation bias". This has already been mentioned above under "independence
+ from the gold standard". Here, the test is incorporated into the evidence
+ used to diagnose the disease!
+ </font><p></p></li><li><font face="Garamond,Times New Roman" size="4">Uninterpretable test results. These are <i>infrequently</i> reported in studies!
+ Such results should be considered 'equivocal' if the test is not
+ repeatable. However, if the test is repeatable, then correction (and
+ estimation of sensitivity and specificity) may be possible, provided
+ the variation is random. Uninterpretable tests may have a positive
+ association with the disease state (or even with 'normality').
+ </font><p></p></li><li><font face="Garamond,Times New Roman" size="4">Interobserver variation. In studies where observer abilities
+ are important, different observers may perform on different ROC curves, or
+ move along the same ROC curve.
+
+</font></li></ol>
+
+<hr>
+
+<font face="Garamond,Times New Roman" size="4"><a name="pct">
+</a></font><p></p><p><font face="Garamond,Times New Roman" size="4"><a name="pct"><font face="Verdana,Helvetica" size="5"><b>An Example: Procalcitonin and Sepsis</b></font></a></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">Let's see how ROC curves have been applied to a particular TEST, widely promoted as an
+easy and quick method of diagnosing sepsis. As with all clinical medicine,
+we must first state our problem. We will simply repeat our SIRS/sepsis
+problem from above:
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"><b>The Problem</b>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"><i>Some patients with SIRS have underlying bacterial infection, whereas
+others do not. It is generally highly inappropriate to empirically treat
+everyone with SIRS as if they had bacterial infection, so we need a reliable
+diagnostic test that tells us early on whether bacterial infection is present.
+</i>
+
+</font></p><p>
+<font face="Garamond,Times New Roman" size="4">Waiting for culture results takes days, and such delays will compromise
+infected patients. Although positive identification of bacterial infection
+is our gold standard, the delay involved (1 to 2 days) is too great for us to wait for cultures.
+We need something quicker. The test we examine will be <b>serum procalcitonin</b>.
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Clearly what we now need is to perform a study on patients with SIRS, in whom
+bacterial infection is suspected. These patients should then have
+serum PCT determination, and adequate bacteriological investigation. Knowledge of the
+presence or absence of infection can then be used to create a receiver operating characteristic curve for
+the PCT assay. We can then examine the utility of the ROC curve for
+distinguishing between plain old SIRS, and sepsis. (We might even compare
+such a curve with a similar curve constructed for other indicators of
+infection, such as C-reactive protein).
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">(Note that there are other requirements for our PCT assay, for example,
+that the test is reproducible. In addition, we must have reasonable
+evidence that the 'gold standard' test - here interpretation of microbiological
+data - is reproducibly and correctly performed). 
+
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="4"><b>PCT - a look at the literature</b></font></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">Fortunately for us, there's a 'state of the art' supplement to <i>Intensive
+Care Medicine</i> (2000 <b>26</b> S 145-216) where most of the big names
+in procalcitonin research seem to have had their say.
+Let's look at those articles that seem to have specific applicability to intensive care.
+Interestingly enough, most of these articles make use of ROC analysis!
+Here they are:
+
+</font></p><ol>
+<li><font face="Garamond,Times New Roman" size="4"><b>Brunkhorst FM, et al</b> (pp 148-152)
+     <i>Procalcitonin for the early diagnosis and differentiation of
+     SIRS, sepsis, severe sepsis and septic shock</i>
+ </font></li><li><font face="Garamond,Times New Roman" size="4"><b>Cheval C. et al</b> (pp 153-158)
+     <i>Procalcitonin is useful in predicting the bacterial origin
+     of an acute circulatory failure in critically ill patients</i>
+ </font></li><li><font face="Garamond,Times New Roman" size="4"><b>Rau B. et al</b> (pp 158-164)
+     <i>The Clinical Value of Procalcitonin in the prediction of
+     infected necro[s]is in acute pancreatitis</i>
+ </font></li><li><font face="Garamond,Times New Roman" size="4"><b>Reith HB. et al</b>  (pp 165-169)
+     <i>Procalcitonin in patients with abdominal sepsis</i>
+ </font></li><li><font face="Garamond,Times New Roman" size="4"><b>Oberhoffer M. et al</b> (pp170-174)
+     <i>Discriminative power of inflammatory markers for prediction
+     of tumour necrosis factor-alpha and interleukin-6 in ICU
+     patients with systemic inflammatory response syndrome or sepsis
+     at arbitrary time points</i>
+</font></li></ol>
+
+
+
+<p><font face="Garamond,Times New Roman" size="4">Quite an impressive list! Let's look at each in turn:
+</font></p><ol>
+
+
+<font face="Garamond,Times New Roman" size="4"> </font><p></p><li><font face="Garamond,Times New Roman" size="4"><b>Brunkhorst FM, et al</b> (pp 148-152)
+     <br><i>Procalcitonin for the early diagnosis and differentiation of
+     SIRS, sepsis, severe sepsis and septic shock</i>
+
+</font><p><font face="Garamond,Times New Roman" size="4">The authors recruited 185 consecutive patients. Unfortunately,
+only seventeen patients in the study had uncomplicated 'SIRS' - the
+rest had sepsis (n=61), 'severe sepsis' (n=68) or septic shock (n=39).
+The authors then indulge in intricate statistical manipulation to
+differentiate between sepsis, severe sepsis, and septic shock - they
+even construct ROC curves (although we are not told, when they
+construct an ROC curve for 'prediction of severe sepsis' <i>what
+those with severe sepsis are being differentiated from</i> - presumably
+the rest of the population)! The authors do not address why, in their
+ICU, so many patients had sepsis, and so few had SIRS without sepsis.
+The bottom line is that the results of this study, with an
+apparently highly selected group of just seventeen 'non-septic' SIRS patients,
+seem useless for addressing our problem of differentiating
+SIRS and sepsis! Their ROC curves seem irrelevant to <i>our</i> problem.
+(Parenthetically one might observe that if you walk into their ICU and
+find a patient with SIRS, there would appear to be an over 90% chance that the patient
+has sepsis - who needs procalcitonin in such a setting)?
+
+ </font></p><p></p></li><li><font face="Garamond,Times New Roman" size="4"><b>Cheval C. et al</b> (pp 153-158)
+     <br><i>Procalcitonin is useful in predicting the bacterial origin
+     of an acute circulatory failure in critically ill patients</i>
+
+</font><p><font face="Garamond,Times New Roman" size="4">     This study looked at four groups:
+     </font></p><ol><li><font face="Garamond,Times New Roman" size="4">septic shock (n=16);
+         </font></li><li><font face="Garamond,Times New Roman" size="4">shock without infection(n=18);
+         </font></li><li><font face="Garamond,Times New Roman" size="4">SIRS related to proved infection(n=16);
+         </font></li><li><font face="Garamond,Times New Roman" size="4">ICU patients without shock or infection(n=10).
+     </font></li></ol>
+<font face="Garamond,Times New Roman" size="4">     The choice of groups is somewhat unfortunate! Where are the
+     patients we really want to know about - those with SIRS but <i>no</i>
+     infection? Reading on, we find that only four of the patients in
+     the fourth group met the criteria for SIRS! This study too does
+     not appear to help us in our quest! (The authors use ROC curves
+     to analyse their patients in shock, comparing those with and without
+     sepsis. The numbers look impressive - an AUC of 0.902 for procalcitonin's
+     ability to differentiate between septic shock and 'other' causes of
+     shock. But hang on - let's look at the 'other' causes of
+     shock. We find that in these cases, shock was due to
+     haemorrhage(n=8), heart failure(n=7), anaphylaxis(n=2), and
+     'hypovolaemia' (n=1). One doesn't need a PCT level to decide whether
+     a patient is in heart failure, bleeding to death, etc. A
+     study whose title promises more than is delivered)!
+
+
+ </font><p></p></li><li><font face="Garamond,Times New Roman" size="4"><b>Rau B. et al</b> (pp 158-164)
+     <br><i>The Clinical Value of Procalcitonin in the prediction of
+     infected necro[s]is in acute pancreatitis</i>
+
+     </font><p><font face="Garamond,Times New Roman" size="4">Sixty one patients were entered into this study. Twenty two
+     had oedematous pancreatitis, 18 had sterile necrosis, and 21 had
+     infected necrosis. Serial PCT levels were determined over a period
+     of fourteen days. The 'gold standard' used to determine whether
+     infected necrosis was present was fine needle aspiration of the
+     pancreas, combined with results of intra-operative bacteriology.
+     We learn that
+     </font></p><p><font face="Garamond,Times New Roman" size="4"><i>"PCT concentrations were significantly higher
+     from <b>day 3-13</b> after onset of symptoms in patients with
+     [infected necrosis, compared with sterile necrosis]".</i>
+     {The emphasis is ours}.
+
+     </font></p><p><font face="Garamond,Times New Roman" size="4">The authors then inform us that
+
+     </font></p><p><font face="Garamond,Times New Roman" size="4"><i>"ROC analysis for PCT and CRP has been calcul[a]ted
+     on the basis of at least two maximum values reached during the total
+     observation period. By comparison of the areas under the ROC curve
+     (AUC), PCT was found to have the closest correlation to the presence
+     and severity of bacterial/fungal infection of necrosis and was
+     clearly superior to CRP in this respect (AUC for PCT: 0.955, AUC
+     for CRP: 0.861; p&lt;0.02)."</i>
+
+     </font></p><p><font face="Garamond,Times New Roman" size="4"> Again, the numbers look impressive. 
+     Hold it! Does this mean that we have to do daily PCT levels on
+     all of our patients, and then take the two maximum values, and
+     average them in order to decide who has infected necrosis?? Even
+     more tellingly, we are <i>not</i> provided with information about
+     how PCT might have been used in prospectively differentiating between
+     those who developed sepsis and those who didn't, before bacterial
+     cultures became available. In other words, <i>was PCT useful in
+     identifying infected necrosis <b>early on</b></i>? If I have a
+     sick patient with pancreatitis, can I base my management decision
+     on a PCT level? This vital question is left unanswered, but the
+     lack of utility of PCT in the first two days is of concern!
+
+
+
+ </font></p><p></p></li><li><font face="Garamond,Times New Roman" size="4"><b>Reith HB. et al</b>  (pp 165-169)
+     <br><i>Procalcitonin in patients with abdominal sepsis</i>
+
+     </font><p><font face="Garamond,Times New Roman" size="4">A large study compared 246 patients with "infective or septic
+     episodes confirmed at laparotomy" with 66 controls. And this is
+     where the wheels fall off, for the sixty six controls were undergoing
+     elective operation! Clearly, any results from such a study are
+     irrelevant to the problem ICU case where you are agonizing over
+     whether to send the patient for a laparotomy - "is there sepsis or
+     not"? 
+
+
+ </font></p><p></p></li><li><font face="Garamond,Times New Roman" size="4"><b>Oberhoffer M. et al</b> (pp170-174)
+     <br><i>Discriminative power of inflammatory markers for prediction
+     of tumour necrosis factor-alpha and interleukin-6 in ICU
+     patients with systemic inflammatory response syndrome or sepsis
+     at arbitrary time points</i>
+
+ </font><p><font face="Garamond,Times New Roman" size="4">The authors reason that TNF and IL-6 levels predict mortality from
+ sepsis. Strangely enough, they do not appear to have looked at actual
+ mortality in the 243 patients in the study! This is all very well if
+ you're interested in deciding whether the TNF and IL-6 levels in your
+ patients are over their cutoff levels of 40pg/ml and 500pg/ml respectively, but perhaps of
+ somewhat less utility unless such levels themselves absolutely predict
+ fatal outcome (they don't). From a clinical point of view, this study
+ suffers from use of a 'gold standard' that may not be of great overall
+ relevance. A hard end point (like death) would have been far better.
+ (In addition, the authors are surprisingly coy with their AUCs. If you're
+ really keen, you might try and work these out from their Table 4).
+
+
+</font></p></li></ol>
+
+
+<p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="4"><b>A Summary</b></font></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">Four of the five papers above used ROC analysis. In our opinion, this
+use provides us with little or no clinical direction. 
+If the above articles reflect the 'state of the art' as regards use of
+procalcitonin in distinguishing between the systemic inflammatory
+response syndrome and sepsis, we can at present find no justification
+in using the test on our critically ill patients! (This does not mean
+that the test is of no value, simply that we have no substantial evidence that
+it is of use).
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">What would be most desirable is a study that conformed to the requirements
+we gave above - a study that examines a substantial number of patients
+with either:
+</font></p><ul><li><font face="Garamond,Times New Roman" size="4">SIRS not complicated by sepsis; OR
+    </font></li><li><font face="Garamond,Times New Roman" size="4">sepsis;
+</font></li></ul><font face="Garamond,Times New Roman" size="4"> and demonstrates unequivocally that serum procalcitonin is useful
+in differentiating between the two <i>early on</i>, before blood cultures
+become positive. Clearly a substantial area under an appropriately
+constructed ROC curve would be powerful evidence in support of using
+the test.
+
+
+<!--
+For a slightly better paper, see [Am J Respir Crit Care Med 2001 164 396-402].
+There are still problems - the most notable is that the group was
+still highly selected (If more than about 3% of your ICU admissions are
+having a PCT, then is seems unwise to rely on this paper for guidance!)
+Look at the online supplement for further reasons why it is perhaps
+unwise to extrapolate to <i>your</i> ICU!
+-->
+
+</font><hr>
+
+<font face="Garamond,Times New Roman" size="4"><a name="ptb">
+</a></font><p><font face="Garamond,Times New Roman" size="4"><a name="ptb"><font face="Verdana,Helvetica" size="5"><b>A second example - Tuberculosis, ADA, and pleural fluid</b></font></a></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">For our second example, we'll use some data on Adenosine Deaminase (ADA) levels
+determined on pleural effusions. It is well known that ADA levels in
+empyemas may be high, (we might explore this later), so at first we will
+concentrate on data for pleural fluid obtained from patients with
+either neoplasms, or those with documented tuberculosis (TB). The data
+and ROC curve can be downloaded as a self-extracting
+<a href="ftp://www.anaesthetist.com/pub/roctbca.exe">
+Microsoft Excel spreadsheet</a>. To derive full benefit from this
+example, some knowledge of spreadsheets (specifically, Excel) is
+desirable but probably not vital. The data are the property of Dr Mark
+Hopley of Chris-Hani Baragwanath Hospital (CHB, the largest hospital in the
+world). 
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">The spreadsheet contains three important columns of data:
+</font></p><ol>
+<font face="Garamond,Times New Roman" size="4"> <li>The leftmost column contains ADA levels;
+ </li><li>The next column contains a '1' if the patient had documented tuberculosis,
+ and otherwise a zero;
+ </li><li>The third column contains a '1' only if the patient had documented
+ carcinoma. There were six patients who had both carcinoma and tuberculosis -
+ these have been excluded from analysis.
+</li></font></ol>
+
+<p><font face="Garamond,Times New Roman" size="4">There were eight hundred and twelve tuberculosis patients, and
+one hundred and two patients with malignant pleural effusion. How
+do we go about creating an ROC curve? The steps, as demonstrated in
+the worksheet, are:
+
+</font></p><ol>
+<font face="Garamond,Times New Roman" size="4"> <li>Sort the data according to the ADA level - largest values first;
+ </li><li>Create a column where each row gives the total number of TB patients with
+ ADA levels greater than or equal to the ADA value for that row;
+ </li><li>Create a similar column for patients with cancer;
+ </li><li>Create two new columns, containing the TPF and FPF for each row.
+ In other words, we position our 'green marker' (remember our ROC applet!) <i>just
+ below</i> the current ADA level for that row, and then work out a TPF
+ and an FPF at that cutoff level. We work out the TPF by taking the number
+ of TB cases identified at or above the ADA level for the current row, and dividing by
+ the total number of TB cases. We determine the FPF by taking the number
+ of "false alarms" (cancer patients) at or above that level, and dividing by the
+ total number of such non-TB patients. 
+</li></font></ol>
+
+<p><font face="Garamond,Times New Roman" size="4">We now have sufficient data to plot our ROC curve. Here it is:
+
+</font></p><p></p><div align="center">
+<font face="Garamond,Times New Roman" size="4"><img src="MagnificientROC_files/ADAmalig.gif" alt="ROC curve for ADA in pleural fluid: distinction between tuberculosis and malignancy" height="400" width="400">
+</font></div>
+
+<p><font face="Garamond,Times New Roman" size="4">We still need to determine the Area Under the Curve (AUC). We do this
+by noting that every time we move RIGHT along the x-axis, we can calculate
+the increase in area by finding:
+
+</font></p><pre><font face="Garamond,Times New Roman" size="4">(how much we moved right) * (the current y value)
+</font></pre>
+
+<p><font face="Garamond,Times New Roman" size="4">We can then add up all these tiny areas to get a final AUC. As shown
+in the spreadsheet, this works out at 85.4%, which indicates that, in
+distinguishing between tuberculosis and neoplasia as a cause of
+pleural effusion, ADA seems to be a fairly decent test!
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Here are the corresponding ROC curve for tuberculosis compared
+with inflammatory disorders. As expected, the AUC
+is less for chronic inflammatory disorders, about 77.9%, and pretty poor
+at 63.9% for 'acute inflammation' which mainly represents empyemas.
+
+</font></p><p></p><div align="center">
+<table><tbody><tr><td>
+<img src="MagnificientROC_files/sADAinflam.gif" alt="ROC curve for ADA in pleural fluid: distinction between tuberculosis and chronic inflammatory disorders" height="250" width="250">
+</td><td>
+<img src="MagnificientROC_files/sADAacuteinfl.gif" alt="ROC curve for ADA in pleural fluid: distinction between tuberculosis and acute inflammatory disorders" height="250" width="250">
+</td></tr></tbody></table>
+</div>
+
+<p><font face="Garamond,Times New Roman" size="4">Note that there were only 67 cases of "chronic inflammatory disorders",
+and thirty five with "acute inflammation".  Finally,
+let's look at TB versus "all other" effusion data - there were 393 "non-tuberculous"
+cases. The data include the above 'cancer' and 'inflammatory' cases.
+The AUC is still a respectable 78.6%.
+
+</font></p><p></p><div align="center">
+<font face="Garamond,Times New Roman" size="4"><img src="MagnificientROC_files/ADAall.gif" alt="ROC curve for ADA in pleural fluid: distinction between tuberculosis and all other conditions" height="400" width="400">
+</font></div>
+
+
+
+<p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="4"><b>Is the above credible?</b></font></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">Through our analysis of ADA in pleural fluid, we've learnt how to create an
+ROC curve. But we still <i>must</i> ask ourselves questions about error
+and bias! Here are a few questions you have to ask - they will profoundly
+influence your interpretation and use of the above ROC curves:
+
+</font></p><ul>
+<font face="Garamond,Times New Roman" size="4"> <li>Are the data selected, or were <i>all</i> samples of pleural fluid
+ subject to analysis?
+ </li><li>Does the hospital concerned have a peculiar case spectrum, or
+ will <i>your</i> case profile be similar?
+ </li><li>How severe were the cases of tuberculosis -
+ is the full spectrum of pleural effusions being examined?
+ </li><li>Should the cases who had two diseases (that is, carcinoma and tuberculosis)
+ have been excluded from analysis?
+ </li><li>What co-morbid diseases were present (for example, Human Immunodeficiency
+ Virus infection)?
+ </li><li>Was there verification bias introduced by, for example, a high
+ ADA value being found, and the diagnosis of tuberculosis therefore being aggressively pursued?
+ </li><li>Were any test results uninterpretable?
+ </li><li>In how many cases was the diagnosis known <i>before</i> the test
+ was performed? How many of the cases were considered by the attending
+ physician to be "really problematical diagnoses"? One could even ask
+ "How good were the physicians at clinically diagnosing the various
+ conditions - did the ADA <i>add</i> to diagnostic sensitivity and
+ specificity?"
+</li></font></ul>
+
+<p><font face="Garamond,Times New Roman" size="4">(Makes you think, doesn't it?)
+
+</font></p><p>
+<font face="Garamond,Times New Roman" size="4">{<font size="2">
+Just as an aside, it's perhaps worth mentioning that the above ADA
+results are <i>not</i> normally distributed, for either the 'tuberculosis'
+or the 'neoplasia' samples. Even taking the logarithms
+of the values (although it decreases the skewness of the curves
+dramatically) doesn't quite result in normal distributions, so any
+ROC calculations that assume normality are likely to give spurious
+results. Fortunately our calculations above make no such assumption.</font>}
+
+
+
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="4"><b>Working out Standard Errors</b></font></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">You can calculate Standard Errors for the Areas Under the Curves we've
+presented, using the following JavaScript calculator. It's based on the
+formulae from <a href="#stderr">above</a>.
+
+</font></p><p>
+</p><form name="StandardErrorForm" action="" method="" onsubmit="">
+
+<div align="center"><table bgcolor="#ffcccc" border="2" width="70%">
+<tbody><tr><td>
+
+<table width="100%">
+<tbody><tr><td colspan="2" align="center">
+    <b><font face="Gill Sans,Verdana,Helvetica" size="4">
+    Calculate Standard Error!<sup><a href="#err1"><font size="1">8</font></a></sup>
+    <br>
+    <font size="2">(Enter data, press 'Calculate')</font></font>
+    </b></td></tr>
+
+<tr>
+ <td align="right" width="50%">Area Under Curve &nbsp; &nbsp; </td>
+ <td width="50%">
+        <input name="AUC" size="6" onfocus="window.status='Enter a value between 0.5 and 1.0'" onblur="window.status=' '" onchange="ValidAUC(this, true)" type="text">
+ </td></tr>
+
+<tr>
+ <td align="right">Number <i>without</i> disease &nbsp; &nbsp; </td>
+ <td>
+        <input name="noDisease" size="6" onfocus="window.status='Enter number in sample WITHOUT the disease'" onblur="window.status=' '" onchange="ValidNumber(this, true)" type="text">
+ </td></tr>
+
+<tr>
+ <td align="right">Number WITH disease &nbsp; &nbsp; </td>
+ <td>
+        <input name="Disease" size="6" onfocus="window.status='Enter number in sample WITH the disease'" onblur="window.status=' '" onchange="ValidNumber(this, true)" type="text">
+ </td></tr>
+
+<tr>
+<td>&nbsp;
+  <input name="calcbutton" value="Calculate" onfocus="window.status='Click to calculate Standard Error'" onmouseover="window.status='Click to calculate Standard Error'" onclick="CalculateSE(window.document.forms['StandardErrorForm']);" onblur="window.status=' '" onmouseout="window.status=' '" type="button"> &nbsp; &nbsp; 
+     <input value="Clear Form" onclick="SEkept='';" type="reset">
+</td>
+<td align="right">
+ Standard Error:
+ <input name="SE" size="7" onchange="this.value=SEkept;" onfocus="this.blur();" readonly="readonly" type="text"> &nbsp;
+ <!--this.blur prevents fiddling with value, SEkept is paranoid braces+belt
+ in IE4 / NN6 the READONLY works too!  -->
+</td>
+</tr>
+</tbody></table>
+
+</td></tr></tbody></table></div></form>
+
+
+
+
+<hr>
+
+<font face="Garamond,Times New Roman" size="4"><a name="footer">
+</a></font><p><font face="Garamond,Times New Roman" size="4"><a name="footer"><font face="Verdana,Helvetica" size="6"><b>Footnotes</b></font></a>
+
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="5"><b>1. Exploring Accuracy</b></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="4"><b>Accuracy, PPV and NPV</b></font></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">It would be great if we could lump things together in some way, and
+come up with a single number that could tell us how well a test performs.
+One such number is represented by the area under the ROC.
+Another more traditional (and far more limited) number is <i>accuracy</i>,
+commonly given as:
+
+</font></p><p>
+<font face="Garamond,Times New Roman" size="4">accuracy &nbsp; = number of correct diagnoses / number in total population
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">While we're about it, let's also consider a few other traditional
+terms:
+
+</font></p><ul>
+<p></p><li><font face="Garamond,Times New Roman" size="4"><b>Positive predictive value</b> (PPV) is of some interest to
+clinicians. It answers the question "<i>How likely is the patient to
+have the disease, given that the test is positive?</i>".
+You can work out that this is given by:
+
+<font face="Courier"><pre>        true positives / all positive tests</pre></font>
+
+You'll find
+that positive (and negative) predictive values depend on the frequency
+of the disease in the population, which is one reason why you cannot
+just blindly apply tests, without considering whom you are applying them
+to! <!-- .. up with which I will not put .. -->
+
+</font><p></p></li><li><font face="Garamond,Times New Roman" size="4">In a completely analogous fashion, we calculate the <b>negative
+predictive value</b>, which tells us how likely it is that the disease
+is NOT present, given that the test is negative. We calculate:
+
+<font face="Courier"><pre>       true negatives / all negative tests</pre></font>
+
+</font><p><font face="Garamond,Times New Roman" size="4">(Yet another name for the PPV is <i>accuracy for positive prediction</i>,
+and the negative predictive value, <i>accuracy for negative prediction</i>).
+</font></p></li></ul>
+
+<p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="4"><b>KISS(2)</b></font></font></p><p>
+<font face="Garamond,Times New Roman" size="4"> We will refer to positive predictive value as PPV,
+and negative predictive value as NPV. Accuracy we'll refer to as 'accuracy'
+(heh). 
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="4"><b>An examination of 'accuracy'</b></font></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4">Let's consider two tests with the same accuracy. Let's say we have a population of 1000
+patients, of whom 100 have a particular disease (D+). We apply our
+tests (call them T1 and T2) to the population, and get the following results.
+
+</font></p><p></p><div align="center">
+<table bgcolor="#fff0f0" border="1" width="70%">
+<tbody><tr><td><font face="Verdana,Arial,Helvetica" size="4"></font><div align="center">
+<font face="Verdana,Arial,Helvetica" size="4">NOTE that our tables now contain <i>actual numbers</i> of cases, and
+<b>NOT</b> fractions. The four values are actual numbers of true
+positives, false positives, false negatives and true negatives!
+
+<table bgcolor="white" border="3">
+ <tbody><tr><td width="40%">&nbsp;
+     </td><td align="center" width="30%"><i>D+</i>
+     </td><td align="center" width="30%"><i>D-</i>
+     </td></tr>
+ <tr><td><i>T+</i>
+   </td><td align="center" bgcolor="#ff3333"><b><font color="white">a</font></b>
+   </td><td align="center" bgcolor="#ccccff"><b>b</b>
+   </td></tr>
+ <tr><td><i>T-</i>
+   </td><td align="center" bgcolor="#ffcccc"><b>c</b>
+   </td><td align="center" bgcolor="#3333ff"><b><font color="white">d</font></b>
+   </td></tr>
+</tbody></table>
+<font size="3">
+</font></font><p><font face="Verdana,Arial,Helvetica" size="4"><font size="3">('a' represents true positives, 'd' true negatives, 'b' false
+positives, and 'c' false negatives).</font>
+
+</font></p></div>
+</td></tr></tbody></table></div>
+
+
+
+<p>
+</p><div align="center">
+<table width="55%"><tbody><tr><td align="center">
+
+
+<table bgcolor="white" border="3">
+ <tbody><tr><td colspan="3" align="center"><b>Test performance: T1</b><br>(n=1000)
+  </td></tr>
+ <tr><td width="40%">&nbsp;
+     </td><td align="center" width="30%"><i>D+</i>
+     </td><td align="center" width="30%"><i>D-</i>
+     </td></tr>
+ <tr><td><i>T+</i>
+   </td><td align="center" bgcolor="#ff3333"><b><font color="white">60</font></b>
+   </td><td align="center" bgcolor="#ccccff"><b>5</b>
+   </td></tr>
+ <tr><td><i>T-</i>
+   </td><td align="center" bgcolor="#ffcccc"><b>40</b>
+   </td><td align="center" bgcolor="#3333ff"><b><font color="white">895</font></b>
+   </td></tr>
+<tr><td colspan="3">
+PPV = 92.3%
+<br>NPV = 95.7%
+</td></tr>
+</tbody></table>
+
+</td><td align="center">
+
+<p>
+</p><div align="center">
+<table bgcolor="white" border="3">
+ <tbody><tr><td colspan="3" align="center"><b>Test performance: T2</b><br>(n=1000)
+  </td></tr>
+ <tr><td width="40%">&nbsp;
+     </td><td align="center" width="30%"><i>D+</i>
+     </td><td align="center" width="30%"><i>D-</i>
+     </td></tr>
+ <tr><td><i>T+</i>
+   </td><td align="center" bgcolor="#ff3333"><b><font color="white">95</font></b>
+   </td><td align="center" bgcolor="#ccccff"><b>60</b>
+   </td></tr>
+ <tr><td><i>T-</i>
+   </td><td align="center" bgcolor="#ffcccc"><b>5</b>
+   </td><td align="center" bgcolor="#3333ff"><b><font color="white">840</font></b>
+   </td></tr>
+<tr><td colspan="3">
+PPV = 61.3%
+<br>NPV = 99.4%
+</td></tr>
+</tbody></table>
+
+
+</div></td></tr></tbody></table></div>
+
+
+
+<p><font face="Garamond,Times New Roman" size="4">See how the two tests have the same accuracy (a + d)/1000 = 95.5%,
+but they do remarkably different things. The first test, T1, misses
+the diagnosis 40% of the time, but makes up for this by providing us
+with few <i>false positives</i> - the TNF is 99.4%. The second test
+is quite different - impressive at picking up the disease (a sensitivity
+of 95%) but relatively lousy performance with false positives (a TNF
+of 93%). At first glance, if we accept the common medical obsession with
+ "making the diagnosis", we would be tempted to use T2 in preference
+to T1, (the TPF is after all, 95% for T2 and only 60% for T1), but surely this depends on the disease? If the consequences of
+missing the disease are relatively minor, and the costs of work-up
+of the false positives are going to be enormous, we might just conceivably favour
+T1. 
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Now, let's drop the incidence of the disease to just ten in a thousand,
+that is P(D+) = 1%. Note that the TPF and TNF ( or sensitivity and specificity, 
+ if you prefer) are of course the same, but the positive predictive and
+negative predictive values have altered substantially. 
+
+</font></p><p>
+</p><div align="center">
+<table width="55%"><tbody><tr><td align="center">
+
+
+<table bgcolor="white" border="3">
+ <tbody><tr><td colspan="3" align="center"><b>Test performance: T1</b><br>(n=1000)
+  </td></tr>
+ <tr><td width="40%">&nbsp;
+     </td><td align="center" width="30%"><i>D+</i>
+     </td><td align="center" width="30%"><i>D-</i>
+     </td></tr>
+ <tr><td><i>T+</i>
+   </td><td align="center" bgcolor="#ff3333"><b><font color="white">6</font></b>
+   </td><td align="center" bgcolor="#ccccff"><b>5.5</b>
+   </td></tr>
+ <tr><td><i>T-</i>
+   </td><td align="center" bgcolor="#ffcccc"><b>4</b>
+   </td><td align="center" bgcolor="#3333ff"><b><font color="white">984.5</font></b>
+   </td></tr>
+<tr><td colspan="3">
+PPV = 52.2%
+<br>NPV = 99.6%
+</td></tr>
+</tbody></table>
+
+</td><td align="center">
+
+<p>
+</p><div align="center">
+<table bgcolor="white" border="3">
+ <tbody><tr><td colspan="3" align="center"><b>Test performance: T2</b><br>(n=1000)
+  </td></tr>
+ <tr><td width="40%">&nbsp;
+     </td><td align="center" width="30%"><i>D+</i>
+     </td><td align="center" width="30%"><i>D-</i>
+     </td></tr>
+ <tr><td><i>T+</i>
+   </td><td align="center" bgcolor="#ff3333"><b><font color="white">9.5</font></b>
+   </td><td align="center" bgcolor="#ccccff"><b>66</b>
+   </td></tr>
+ <tr><td><i>T-</i>
+   </td><td align="center" bgcolor="#ffcccc"><b>0.5</b>
+   </td><td align="center" bgcolor="#3333ff"><b><font color="white">924</font></b>
+   </td></tr>
+<tr><td colspan="3">
+PPV = 12.6%
+<br>NPV = 99.9%
+</td></tr>
+</tbody></table>
+</div></td></tr></tbody></table></div>
+
+
+<p><font face="Garamond,Times New Roman" size="4">(Okay, you might wish to round off the "fractional people")!
+See how the PPV and NPV have changed for both tests. Now, six out
+of every seven patients reported "positive" according to test T2, will
+in fact be false positives. Makes you think, doesn't it?
+
+    </font></p><p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="3"><b>Another example</b></font></font></p><p>
+</p><p><font face="Garamond,Times New Roman" size="4"> Now let's consider a
+test which is 99% sensitive and and 99% specific for the diagnosis of
+say, Human Immunodeficiency Virus infection. Let's look at how
+such a test would perform in two populations, one where the incidence
+of HIV infection is 0.1%, another where the incidence is 30%. Let's
+sample 10 000 cases:
+
+</font></p><p>
+</p><div align="center">
+<table width="60%"><tbody><tr><td align="center">
+
+
+<table bgcolor="white" border="3">
+ <tbody><tr><td colspan="3" align="center"><b>Test&nbsp;performance:&nbsp;Population&nbsp;A</b>
+ <br><font size="2">(n=10 000, incidence 1/1000)</font>
+  </td></tr>
+ <tr><td width="40%">&nbsp;
+     </td><td align="center" width="30%"><i>D+</i>
+     </td><td align="center" width="30%"><i>D-</i>
+     </td></tr>
+ <tr><td><i>T+</i>
+   </td><td align="center" bgcolor="#ff3333"><b>10</b>
+   </td><td align="center" bgcolor="#ccccff"><b>100</b>
+   </td></tr>
+ <tr><td><i>T-</i>
+   </td><td align="center" bgcolor="#ffcccc"><b>0</b>
+   </td><td align="center" bgcolor="#3333ff"><b>9890</b>
+   </td></tr>
+<tr><td colspan="3">
+PPV = 9.1%
+<br>NPV = almost 100%
+</td></tr>
+</tbody></table>
+
+</td><td align="center">
+
+<p>
+</p><div align="center">
+<table bgcolor="white" border="3">
+ <tbody><tr><td colspan="3" align="center"><b>Test&nbsp;performance:&nbsp;Population&nbsp;B</b>
+ <br><font size="2">(n=10 000, incidence 300/1000)</font>
+  </td></tr>
+ <tr><td width="40%">&nbsp;
+     </td><td align="center" width="30%"><i>D+</i>
+     </td><td align="center" width="30%"><i>D-</i>
+     </td></tr>
+ <tr><td><i>T+</i>
+   </td><td align="center" bgcolor="#ff3333"><b>2970</b>
+   </td><td align="center" bgcolor="#ccccff"><b>70</b>
+   </td></tr>
+ <tr><td><i>T-</i>
+   </td><td align="center" bgcolor="#ffcccc"><b>30</b>
+   </td><td align="center" bgcolor="#3333ff"><b>6930</b>
+   </td></tr>
+<tr><td colspan="3">
+PPV = 97.7%
+<br>NPV = 99.5%
+</td></tr>
+</tbody></table>
+</div></td></tr></tbody></table></div>
+
+<p><font face="Garamond,Times New Roman" size="4">If the disease is rare, use of even a very specific test will be
+associated with many false positives (and all that this entails, especially
+for a problem like HIV infection); conversely, if the disease is common,
+a positive test is likely to be a true positive. (This should really be
+common sense, shouldn't it?)
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">You can see from the above that it's rather silly to have a fixed
+test threshold. We've already played around with our applet where
+we varied the test threshold, and watched how the TPF/FPF coordinates
+moved along the ROC curve. The (quite literally) million dollar question
+is "Where do we set the threshold"?
+
+
+<a name="threshold">
+</a></font></p><p><font face="Garamond,Times New Roman" size="4"><a name="threshold"><font face="Verdana,Helvetica" size="5"><b>2. Deciding on a test threshold</b></font></a></font></p><p>
+
+<font face="Garamond,Times New Roman" size="4"><b>The reason why</b> we choose
+to plot <b>FPF</b> against <b>TPF</b> when we make
+our ROC is that all the information is contained
+in the relationship between just these two values, and it's awfully convenient to think of, in
+the words of Swets, "hits" and "false alarms" (in other words, TPF and FPF).
+We can limit the false alarms, but at the expense of fewer "hits". 
+
+What dictates where we should put our cutoff point for diagnosing a
+disease? The answer is not simple, because we have many possible
+criteria on which to base a decision. These include:
+
+</font></p><ul>
+<font face="Garamond,Times New Roman" size="4"> <li>Financial costs both direct and indirect of treating a disease
+(present or not), and of failing to treat a disease;
+ </li><li>Costs of further investigation (where deemed appropriate);
+ </li><li>Discomfort to the patient caused by disease treatment, or failure
+ to treat;
+ </li><li>Mortality associated with treatment or non-treatment;
+</li></font></ul>
+
+<p><font face="Garamond,Times New Roman" size="4">Soon we will explore the mildly complex maths involved, but first let's use a little
+common sense. It would seem logical that if the cost of missing a diagnosis
+is great, and treatment (even inappropriate treatment of a normal person)
+is safe, then one should move to a point on the <i>right</i> of the ROC,
+where we have a high TPF (most of the true positives will be treated) at
+the cost of many false positives. Conversely, if the risks of therapy
+are grave, and therapy doesn't help much anway, we should position our
+point far to the left, where we'll miss a substantial number of positives
+(low TPF) but not harm many unaffected people (low FPF)! 
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">More formally, we can express the average cost resulting from
+the use of a diagnostic test as:
+
+<font face="Courier"><pre>C<sub>avg</sub>  = C<sub>o</sub> + C<sub>TP</sub>*P(TP) + C<sub>TN</sub>*P(TN) + C<sub>FP</sub>*P(FP) + C<sub>FN</sub>*P(FN)
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"> where C<sub>avg</sub> is the average cost, C<sub>TP</sub> is the
+cost associated with management of true positives, and so on.
+C<sub>o</sub> is the "overhead cost" of actually doing the test. 
+Now, we can work out that the probability of a true positive P(TP) is
+given by:
+
+<font face="Courier"><pre>P(TP) = P(D+) * P(T+|D+)
+      = P(D+) * TPF
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">In other words, P(TP) is given by the product of the prevalence of
+the disease in the population, P(D+), multiplied by the true positive
+fraction, for the test. We can similarly substitute for the three other
+probabilities in the equation, to get:
+
+<font face="Courier"><pre>C<sub>avg</sub>  = C<sub>o</sub> + C<sub>TP</sub>*P(D+)*P(T+|D+) + C<sub>TN</sub>*P(D-)*P(T-|D-)
+          + C<sub>FP</sub>*P(D-)*P(T+|D-) + C<sub>FN</sub>*P(D+)*P(T-|D+)
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Another way of writing this is:
+
+<font face="Courier"><pre>C<sub>avg</sub>  = C<sub>o</sub> + C<sub>TP</sub>*P(D+)*TPF + C<sub>TN</sub>*P(D-)*TNF
+          + C<sub>FP</sub>*P(D-)*FPF + C<sub>FN</sub>*P(D+)*FNF
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Remembering that TNF = 1 - FPF, and FNF = 1 - TPF, we can write:
+
+<font face="Courier"><pre>C<sub>avg</sub>  = C<sub>o</sub> + C<sub>TP</sub>*P(D+)*TPF + C<sub>TN</sub>*P(D-)*(1-FPF)
+          + C<sub>FP</sub>*P(D-)*FPF + C<sub>FN</sub>*P(D+)*(1-TPF)
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">and, rearrange to ..
+
+<font face="Courier"><pre>C<sub>avg</sub>  =      TPF * P(D+) * { C<sub>TP</sub> - C<sub>FN</sub> }
+          + FPF * P(D-) * { C<sub>FP</sub> - C<sub>TN</sub> }
+          + C<sub>o</sub> + C<sub>TN</sub>*P(D-) + C<sub>FN</sub>*P(D+)
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">As Metz has pointed out, even if a diagnostic test improves decision-making,
+it may still increase overall costs if C<sub>o</sub> is great. Of even more interest
+is the dependence of C<sub>avg</sub> on TPF and FPF - the coordinates on
+an ROC curve! Thus average cost depends on the test threshold defined on
+an ROC curve, and varying this threshold will vary costs. The best cost
+performance is achieved when C<sub>avg</sub> is minimised. We know from
+elementary calculus that this cost will be minimal when the derivative
+of the cost equation is zero. Now because we can express TPF as a function
+of FPF using the curve of the ROC, thus:
+
+<font face="Courier"><pre>C<sub>avg</sub>  =      ROC(FPF) * P(D+) * { C<sub>TP</sub> - C<sub>FN</sub> }
+          + FPF * P(D-) * { C<sub>FP</sub> - C<sub>TN</sub> }
+          + C<sub>o</sub> + C<sub>TN</sub>*P(D-) + C<sub>FN</sub>*P(D+)
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">we can differentiate this equation with respect to FPF, and obtain:
+
+<font face="Courier"><pre>dC/dFPF  =      dROC/dFPF * P(D+) * { C<sub>TP</sub> - C<sub>FN</sub> }
+          +  P(D-) * { C<sub>FP</sub> - C<sub>TN</sub> }
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">Setting dC/dFPF to zero, we get:
+
+<font face="Courier"><pre>dROC/dFPF * P(D+) * { C<sub>TP</sub> - C<sub>FN</sub> }
+         = -  P(D-) * { C<sub>FP</sub> - C<sub>TN</sub> }
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4"> or, rearranging:
+
+<font face="Courier"><pre>                P(D-) * { C<sub>FP</sub> - C<sub>TN</sub> }
+dROC/dFPF  =    -------------------
+                P(D+) * { C<sub>FN</sub> - C<sub>TP</sub>}
+</pre></font>
+
+</font></p><p><font face="Garamond,Times New Roman" size="4">In other words, we have found a differential equation that gives us
+the slope of the ROC curve at the point where costs are optimal. 
+Now let's look at a few circumstances:
+
+</font></p><ul>
+<font face="Garamond,Times New Roman" size="4"> <li>Where the disease is rare, P(D-)/P(D+) will be enormous, and
+ so we should shift our test threshold down to the lower left part
+ of the ROC curve, where dROC/dFPF, the slope of the curve, is large.
+ This fits in with our previous simple analysis, where with uncommon
+ diseases, we found that false positives are a very bad thing. We
+ must minimise our false positives, even at the expense of missing
+ true positives!
+
+ <p></p></li><li>Conversely, with a common disease, we move our threshold to
+ a lower, more lenient level, 
+ (and our position on the ROC curve necessarily moves right). Otherwise,
+ most of our negatives are false negatives!
+
+ <p></p></li><li>Also notice that the curve slope is great if the cost difference
+ is far greater for C<sub>FP</sub> - C<sub>TN</sub> than for
+ C<sub>FN</sub> - C<sub>TP</sub>. Let's consider a practical scenario -
+ assume for a particular disease (say a brain tumour) that if you get a positive test, you have to open up the patient's
+ skull and cut into the brain to find the presumed cancer. If you have
+ a negative, you do nothing. Let's also assume that the operation doesn't
+ help those who have the cancer - many die, regardless. Then the
+ cost of a false positive (operating on the brains of normal individuals!) is indeed far greater
+ than the cost of a true negative (doing nothing), <i>and</i> the
+ cost of a false negative (not doing an operation that doesn't help a lot)
+ is similar to the cost of a true positive (doing the rather unhelpful
+ operation). The curve slope is steep, so we move our test threshold
+ down on the left of the ROC curve.
+
+ <p></p></li><li>The opposite is where the consequences of a false positive
+ are minimal, and there is great benefit if you treat sufferers from
+ the disease. Here, you must move up and to the right on the ROC curve.
+
+</li></font></ul>
+
+
+<p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="4"><b>{Fine Print - Old fashioned assumptions of Normality</b></font></font></p><p>
+
+
+
+<font face="Garamond,Times New Roman" size="4"><font size="3">
+Earlier literature on ROC curves often seems to have made the unfortunate
+assumption that the underlying distributions are <i>normal curves</i>.
+(The only reason we used normal curves in our applet is their convenience -
+perhaps the same reason that others have 'assumed normality'). 
+Under this assumption, one trick that has been used is to create special
+'graph paper' where axes are transformed according to the normal distribution.
+('double normal probability co-ordinate scales').
+ Using such coordinates, ROC curves become linear (!), and one can read
+ off slope and axis, which correspond to the two parameters that contain
+ the mean and standard deviation. Curve fitting can be done (using special
+ techniques, NOT least squares) to work out the line that best fits the
+ plotted coordinates. Such methods appear to have been applied mainly
+ in studies of experimental psychology.
+
+ </font></font></p><p><font face="Garamond,Times New Roman" size="4"><font size="3">Note that if one uses double normal probability plots, the slope
+ of the straight line obtained by plotting TPF
+ against FPF will give us the ratio of standard deviations of the
+ two distributions (assuming normality). In other words, if the
+ standard deviations of the populations D+ and D- are s<sub>D+</sub>
+ and s<sub>D-</sub>, the line slope is s<sub>D-</sub> / s<sub>D+</sub>.
+ In the particular case where this value is 1, we can measure the distance
+ between the plotted line and the 'chance line' (connecting the bottom
+ left and top right corners of the graph). This distance is a normalised
+ measure of the distance between the means of the two distributions:
+
+ <font face="Courier"><pre>             d' = (m<sub>D+</sub> / m<sub>D-</sub>)  / <b>s</b> </pre></font>
+
+ </font></font></p><p><font face="Garamond,Times New Roman" size="4"><font size="3">where m refers to mean, and <b>s</b>, standard deviation.
+</font>
+<font face="Verdana,Helvetica" size="4"><b>}</b></font></font></p><p>
+
+</p><p><font face="Garamond,Times New Roman" size="4"><font face="Verdana,Helvetica" size="6"><b>References</b></font></font></p><p>
+
+</p><ol>
+
+<p></p><li><font face="Garamond,Times New Roman" size="4">Hanley JA, McNeil BJ. <b>Radiology</b> 1982 143 29-36.
+<i>The meaning and use of the area under the Receiver Operating
+Characteristic (ROC) curve</i>. An excellent paper, but not an
+easy read! Their follow-up paper is also good [Radiology 1983 148 839-43].
+
+</font><p></p></li><li><font face="Garamond,Times New Roman" size="4">Metz CE. <b>Semin Nuclear Med</b> 1978 VIII(4) 283-298.
+<i>Basic principles of ROC analysis</i>. A really good introduction,
+on which we've based a lot of the above text.
+Things have however come a long way since 1978. See also the paper
+by Dennis Patton in the same issue (p273) which has quite a bit
+on Bayesian decision making, as does the paper by McNeil et al
+in the New England Journal of Medicine [1975, 293 211-5].
+
+<a name="begg">
+</a></font><p></p></li><li><font face="Garamond,Times New Roman" size="4"><a name="begg">Begg CB, McNeil BJ <b>Radiology</b> 1988 167 565-9.
+<i>Assessment of radiologic tests: control of bias and other design
+considerations</i>. A must-read on bias.</a>
+
+</font><p></p></li><li><font face="Garamond,Times New Roman" size="4">Swets JA. <b>Science</b> 1988 240 1285-93. <i>Measuring
+the accuracy of diagnostic systems</i>. A fascinating and wide-ranging
+article.
+
+</font><p></p></li><li><font face="Garamond,Times New Roman" size="4">There's quite an attractive ROC applet at
+<a href="http://acad.cgu.edu/wise/sdt/sdt.html">http://acad.cgu.edu/wise/sdt/sdt.html</a>.
+The box on the right demonstrates double normal probability co-ordinate scales, for the
+curious.
+
+</font><p></p></li><li><font face="Garamond,Times New Roman" size="4">Good ROC software (not freeware, ~1 Meg) is available for
+download (IBM PC version, MAC also available) at <a href="ftp://random.bsd.uchicago.edu/roc/ibmpc/">ftp://random.bsd.uchicago.edu/roc/ibmpc/</a>.
+Note that this 'ROCKIT' is Metz's implementation of software that <i>assumes
+binormal distributions</i>. Do <b>not</b> use it unless
+you've verified that the curves are both normally distributed! There is
+extensive associated documentation. 
+
+</font><p></p></li><li><font face="Garamond,Times New Roman" size="4">Try <a href="http://brighamrad.harvard.edu/research/topics/vispercep/ROC.html">http://brighamrad.harvard.edu/research/topics/vispercep/ROC.html</a>
+for a little note on ROC curves that is linked to an interesting paper
+where they are applied.
+
+<a name="err1"> </a>
+</font><p></p></li><li><font face="Garamond,Times New Roman" size="4">Thanks to Koen Vermeer for pointing out an error in our JavaScript Standard Error
+calculator that resulted in a significant miscalculation (2003/10/13). Sharp!
+<!-- transposition of nn and na in:
+        nn = parseFloat(thisform.noDisease.value);
+        na = parseFloat(thisform.Disease.value);
+-->
+
+
+<!-- other web refs:
+
+http://math.uc.edu/~brycw/classes/147/blue/tools.htm
+
+http://www-sci.lib.uci.edu/HSG/RefCalculators2A.html
+
+http://www.stat.ufl.edu/vlib/statistics.html
+
+http://math.uc.edu/~brycw/classes/147/blue/tools.htm#texts
+
+http://www.stat.duke.edu/sites/java.html
+
+http://glass.ed.asu.edu/stats/analysis/
+
+http://www.math.uah.edu/stat/
+
+http://davidmlane.com/hyperstat/index.html
+
+http://www.stat.sc.edu/rsrch/gasp/
+
+-->
+
+</font></li></ol>
+
+                 <!-- end Garamond main body font-->
+<hr>
+
+<div align="center">
+<table bgcolor="#cccccc" border="0" width="100%">
+<tbody><tr><td><font size="2"><b>Date of First Publication</b>: 2001/9/21</font></td>
+    <td align="center"><font size="2"><b>Date of Last Update</b>: 2003/10/13</font></td>
+    <td align="right"><font size="2"><b>Web page author:</b>
+    <a href="mailto:jo@anaesthetist.com">jo@anaesthetist.com</a>
+    </font></td>
+</tr></tbody></table>
+
+</div></td></tr></tbody></table></div>                <!-- END OUTER MARGIN-->
+
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+&nbsp;
+</body></html>

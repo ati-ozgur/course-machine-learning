@@ -1,5 +1,12 @@
 books.txt
 
+The Machine & Deep Learning Compendium
+https://github.com/orico/www.mlcompendium.com/
+https://book.mlcompendium.com/
+
+
+
+
 Understanding Machine Learning: From Theory to Algorithms
 https://www.cs.huji.ac.il/~shais/UnderstandingMachineLearning/index.html
 

@@ -8,3 +8,6 @@ https://developers.google.com/machine-learning/guides/rules-of-ml
 
 
 https://mobile.twitter.com/andrewgwils/status/1399868867783106562
+
+https://towardsdatascience.com/implementing-expectation-maximisation-algorithm-from-scratch-with-python-9ccb2c8521b3
+https://towardsdatascience.com/k-means-clustering-explain-it-to-me-like-im-10-e0badf10734a

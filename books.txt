@@ -51,3 +51,33 @@ https://medium.com/mlreview/speeding-up-dqn-on-pytorch-solving-pong-in-30-minute
 The Book of Why
 Authors: Judea Pearl, Dana Mackenzie.
 Categories: Data Science, AI and Machine Learning.
+
+
+High-Dimensional Data Analysis with Low-Dimensional Models:
+Principles, Computation, and Applications
+John Wright   and   Yi Ma 
+https://book-wright-ma.github.io/
+
+Probabilistic Machine Learning: An Introduction
+https://probml.github.io/pml-book/book1.html
+
+https://jakevdp.github.io/PythonDataScienceHandbook/
+
+
+Machine Learning Engineering 
+Andriy Burkov
+http://www.mlebook.com/wiki/doku.php
+
+
+
+Dive into Deep Learning
+https://d2l.ai/
+
+@book{Goodfellow-et-al-2016,
+    title={Deep Learning},
+    author={Ian Goodfellow and Yoshua Bengio and Aaron Courville},
+    publisher={MIT Press},
+    note={\url{http://www.deeplearningbook.org}},
+    year={2016}
+}
+https://www.deeplearningbook.org/

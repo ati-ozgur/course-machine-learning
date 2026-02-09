@@ -1,0 +1,26 @@
+project:
+  output-dir: ./_site/tr
+
+book:
+  output-file: "ml-giris"
+  title: "Makine Öğrenmesi Giriş"
+  navbar:
+    background: primary
+    search: true
+    right:
+      - text: "English"
+        href: ../en/index.html
+      - text: "Türkçe"
+        href: ../tr/index.html  
+  chapters:
+    - part: "Giriş"
+      chapters:
+        - index.qmd  
+        - course-content/intro-tr.qmd
+
+
+    - part: "Son"
+      chapters:    
+        - course-content/references.qmd
+
+

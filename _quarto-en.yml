@@ -1,0 +1,28 @@
+project:
+  output-dir: ./_site/en
+
+book:
+  output-file: "ml-introduction"
+  title: "Introduction to Machine Learning"
+  navbar:
+    background: primary
+    search: true
+    right:
+      - text: "English"
+        href: ../en/index.html
+      - text: "Türkçe"
+        href: ../tr/index.html    
+  chapters:
+    - part: "Introduction"
+      chapters:    
+        - index.qmd
+        - course-content/syllabus.qmd
+        - course-content/intro-en.qmd
+
+    - part: "Summary"
+      chapters:    
+        - course-content/references.qmd
+
+
+
+

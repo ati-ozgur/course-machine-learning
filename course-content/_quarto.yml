@@ -1,0 +1,26 @@
+project:
+  type: book
+
+book:
+  title: "Machine Learning"
+  author: "Norah Jones"
+  date: "2/9/2026"
+  chapters:
+    - index.qmd
+    - syllabus.qmd
+    - intro.qmd
+    - summary.qmd
+    - references.qmd
+
+bibliography: references.bib
+
+format:
+  html:
+    theme:
+      - cosmo
+      - brand
+  pdf:
+    documentclass: scrreprt
+
+
+

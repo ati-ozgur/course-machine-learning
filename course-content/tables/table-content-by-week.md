@@ -7,9 +7,10 @@
 | 5    | Linear & Polynomial Regression                                                      |       |
 | 6    | Logistic Regression & Discriminant Analysis                                         |       |
 | 7    | Support Vector Machines (Support vector classifier, Kernels)                        |       |
-| 8    |                                                                                     |       |
-| 9    |                                                                                     |       |
-| 10   |                                                                                     |       |
-| 11   |                                                                                     |       |
-| 12   |                                                                                     |       |
-| 13   |                                                                                     |       |
+| 8    | Decision Trees      |       |
+| 9    | Ensemble Methods |       |
+| 10   | Neural Networks |       |
+| 11   | Regression     |       |
+| 12   | Clustering     |       |
+| 13   | Feature Selection   |       |
+| 14   | Model Deployment   |       |

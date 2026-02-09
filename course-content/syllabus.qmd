@@ -3,3 +3,14 @@
 ## Content by week
 
 {{< include ./tables/table-content-by-week.md >}}
+
+
+## Books
+
+- [An Introduction to Statistical Learning](https://www.statlearning.com)
+- [A Course in Machine Learning](http://ciml.info)
+
+## Exams
+
+- %40 Midterms
+- %60 Finals

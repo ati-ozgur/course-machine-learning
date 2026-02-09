@@ -18,6 +18,7 @@ book:
   title: "Introduction to Machine Learning (Makine Öğrenmesine giriş)"
   chapters:
       - index.qmd
+      - course-content/syllabus.qmd
 
 bibliography: references.bib 
 

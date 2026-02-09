@@ -10,7 +10,7 @@
 | 8    | Decision Trees      |       |
 | 9    | Ensemble Methods |       |
 | 10   | Neural Networks |       |
-| 11   | Regression     |       |
-| 12   | Clustering     |       |
-| 13   | Feature Selection   |       |
+| 11   | Clustering     |       |
+| 12   | Pre-processing data 1  |       |
+| 13   | Pre-processing data 2 |       |
 | 14   | Model Deployment   |       |

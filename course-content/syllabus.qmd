@@ -1,1 +1,5 @@
-syllabus.qmd
+# syllabus
+
+## Content by week
+
+{{< include ./tables/table-content-by-week.md >}}

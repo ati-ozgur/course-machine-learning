@@ -2,6 +2,7 @@ _site/*
 _book/*
 .quarto
 site_libs/*
+*.tex
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
